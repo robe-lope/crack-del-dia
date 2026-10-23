@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Crack del Día</title>
+  <meta name="description" content="Un futbolista por día. Las pistas se abren de a una: ¿con cuántas lo adivinás?">
+  <meta name="theme-color" content="#12261D">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2312261D'/%3E%3Crect x='6' y='8' width='20' height='7' rx='1.5' fill='%231A3A2B' stroke='%23EAF1EC' stroke-width='1.5'/%3E%3Crect x='6' y='18' width='20' height='7' rx='1.5' fill='%23F4B223'/%3E%3C/svg%3E">
+  <link rel="preload" href="/fonts/big-shoulders.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/schibsted.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="pagina">
+    <header class="cabecera">
+      <h1 class="marca">Crack del Día</h1>
+      <p class="meta"><span id="num"></span><span id="racha"></span></p>
+    </header>
+
+    <nav class="pestanas" aria-label="Secciones">
+      <button type="button" id="pestana-juego" class="pestana" aria-current="page">Jugar</button>
+      <button type="button" id="pestana-practica" class="pestana">Práctica</button>
+      <button type="button" id="pestana-ranking" class="pestana">Ranking</button>
+    </nav>
+
+    <main>
+      <section id="vista-juego" aria-label="Partida de hoy">
+        <p id="aviso-ejemplo" class="aviso" hidden>Estás viendo datos de ejemplo. Poné tu archivo <code>data/players.json</code> para jugar con la lista real.</p>
+
+        <div id="practica-barra" class="practica-barra" hidden>
+          <p id="practica-resumen"></p>
+          <button type="button" id="practica-cambiar" class="enlace">Cambiar</button>
+        </div>
+
+        <section class="tablero" aria-labelledby="titulo-tablero">
+          <div class="tablero-cab">
+            <div class="silueta" id="silueta" aria-hidden="true">
+              <svg viewBox="0 0 64 64" focusable="false"><circle cx="32" cy="24" r="11"/><path d="M8 64c1-15 10-23 24-23s23 8 24 23z"/></svg>
+              <img id="bandera" class="bandera" alt="" hidden>
+            </div>
+            <div>
+              <h2 id="titulo-tablero" class="tablero-titulo">¿Quién es?</h2>
+              <p id="pais" class="tablero-pais" hidden></p>
+              <p id="contador" class="tablero-sub"></p>
+            </div>
+          </div>
+          <ol id="pistas" class="filas"></ol>
+        </section>
+
+        <form id="form" class="adivinar" autocomplete="off" novalidate>
+          <label for="q" class="sr">Nombre del jugador</label>
+          <div class="campo">
+            <input id="q" type="text" role="combobox" aria-expanded="false" aria-controls="lista" aria-autocomplete="list" autocapitalize="words" spellcheck="false" placeholder="Nombre del jugador" enterkeyhint="go" maxlength="60">
+            <ul id="lista" class="opciones" role="listbox" hidden></ul>
+          </div>
+          <button type="submit" id="arriesgar" class="boton boton--sol">Arriesgar</button>
+        </form>
+
+        <div class="acciones" id="acciones">
+          <button type="button" id="pedir" class="boton boton--borde">Pedir otra pista</button>
+          <p id="valor" class="valor-ahora"></p>
+        </div>
+
+        <p id="mensaje" class="mensaje" role="status" aria-live="polite"></p>
+        <div class="intentos" id="intentos-caja">
+          <p id="intentos-texto" class="intentos-texto"></p>
+          <ul id="fallos" class="fallos" aria-label="Jugadores descartados"></ul>
+        </div>
+
+        <section id="final" class="final" hidden aria-labelledby="final-titulo">
+          <div class="final-foto" id="final-foto"></div>
+          <div class="final-texto">
+            <h2 id="final-titulo" class="final-nombre"></h2>
+            <p id="final-detalle" class="final-detalle"></p>
+            <p id="final-credito" class="credito" hidden></p>
+          </div>
+          <div class="final-acciones">
+            <button type="button" id="compartir" class="boton boton--sol">Copiar resultado</button>
+            <button type="button" id="ver-ranking" class="boton boton--borde">Ver ranking</button>
+            <button type="button" id="practica-otro" class="boton boton--sol" hidden>Otro jugador</button>
+            <button type="button" id="practica-filtros" class="boton boton--borde" hidden>Cambiar filtros</button>
+          </div>
+          <p class="proximo" id="proximo">El próximo jugador sale en <strong id="cuenta" class="cuenta">--:--:--</strong></p>
+          <div id="apodo-final"></div>
+        </section>
+      </section>
+
+      <section id="vista-practica" aria-label="Práctica" hidden>
+        <p class="practica-intro">Un jugador al azar, cuando quieras. No suma al ranking ni a la racha.</p>
+        <h2 class="practica-titulo" id="grupo-titulo">Jugadores</h2>
+        <div id="opciones-grupo" class="subpestanas subpestanas--varias" role="group" aria-labelledby="grupo-titulo"></div>
+        <h2 class="practica-titulo" id="dificultad-titulo">Dificultad</h2>
+        <div id="opciones-dificultad" class="subpestanas subpestanas--varias" role="group" aria-labelledby="dificultad-titulo"></div>
+        <p id="dificultad-detalle" class="practica-detalle"></p>
+        <button type="button" id="practica-jugar" class="boton boton--sol practica-jugar">Jugar</button>
+        <p id="practica-mensaje" class="mensaje" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="vista-ranking" aria-label="Ranking" hidden>
+        <div class="subpestanas" role="group" aria-label="Período">
+          <button type="button" class="subpestana" data-tipo="dia" aria-pressed="true">De hoy</button>
+          <button type="button" class="subpestana" data-tipo="acumulado" aria-pressed="false">Últimos 30 días</button>
+        </div>
+        <div id="apodo-ranking"></div>
+        <ol id="puestos" class="puestos"></ol>
+        <p id="ranking-vacio" class="vacio" hidden></p>
+      </section>
+    </main>
+
+    <footer class="pie">
+      <p>Datos de Wikidata. Fotos de Wikimedia Commons, con el crédito de cada autor.</p>
+    </footer>
+  </div>
+
+  <noscript><p class="aviso">Este juego necesita JavaScript para funcionar.</p></noscript>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
