@@ -46,6 +46,7 @@
             </div>
           </div>
           <ol id="pistas" class="filas"></ol>
+          <p id="quedan" class="tablero-quedan" hidden></p>
         </section>
 
         <form id="form" class="adivinar" autocomplete="off" novalidate>
@@ -58,7 +59,7 @@
         </form>
 
         <div class="acciones" id="acciones">
-          <button type="button" id="pedir" class="boton boton--borde">Pedir otra pista</button>
+          <button type="button" id="pedir" class="boton boton--borde">Pedir pista</button>
           <p id="valor" class="valor-ahora"></p>
         </div>
 
@@ -112,6 +113,15 @@
       <p>Datos de Wikidata. Fotos de Wikimedia Commons, con el crédito de cada autor.</p>
     </footer>
   </div>
+
+  <dialog id="modal" class="modal" aria-labelledby="modal-titulo">
+    <div class="modal-cab">
+      <h2 id="modal-titulo" class="modal-titulo">Pedir una pista</h2>
+      <button type="button" id="modal-cerrar" class="modal-x" aria-label="Cerrar">&times;</button>
+    </div>
+    <p id="modal-ayuda" class="modal-ayuda"></p>
+    <ul id="modal-categorias" class="modal-categorias"></ul>
+  </dialog>
 
   <noscript><p class="aviso">Este juego necesita JavaScript para funcionar.</p></noscript>
   <script type="module" src="/app.js"></script>
