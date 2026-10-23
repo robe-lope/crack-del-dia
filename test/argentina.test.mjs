@@ -11,7 +11,7 @@ const PUERTO = 3197;
 const BASE = `http://localhost:${PUERTO}`;
 const dir = mkdtempSync(join(tmpdir(), 'crack-argentina-'));
 
-// Piso de fama por defecto (lib/datos.js): Argentinos 35, Sudamericanos 55, Estrellas mundiales 80.
+// Piso de fama por defecto (lib/datos.js): Argentinos 30, Sudamericanos 55, Estrellas mundiales 80.
 const BASICAS = { posicion: 'Delantero', alturaCm: 180, debut: 2000, retiro: 2018 };
 const carrera = (...clubes) => clubes.map((club, i) => ({ club, desde: 2000 + i * 2, hasta: 2002 + i * 2 }));
 

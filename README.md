@@ -51,7 +51,7 @@ En desarrollo se puede probar otro día con `?fecha=2026-11-05` en las llamadas 
 2. En Vercel, en Settings > Environment Variables, cargá:
    - `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN`
    - `SEMILLA`: un texto largo y secreto. Define el orden de los jugadores. Si es público, se pueden saber los de los próximos días.
-   - Opcionales: `FECHA_INICIO` (día del Nº 1, por defecto 2026-10-22) `MIN_POPULARIDAD` (piso general de idiomas de Wikipedia) y `MIN_POP_ARGENTINOS` / `MIN_POP_SUDAMERICANOS` / `MIN_POP_MUNDIALES` (pisos por grupo; por defecto 35 / 55 / 80, unos 340 jugadores del día posibles).
+   - Opcionales: `FECHA_INICIO` (día del Nº 1, por defecto 2026-10-22) `MIN_POPULARIDAD` (piso general de idiomas de Wikipedia) y `MIN_POP_ARGENTINOS` / `MIN_POP_SUDAMERICANOS` / `MIN_POP_MUNDIALES` (pisos por grupo; por defecto 30 / 55 / 80). Junto con el filtro de [quién puede ser jugador del día](#reglas-de-la-partida) (argentino o `jugoEnArgentina`), da unos 240 jugadores del día posibles.
 3. Subí el proyecto a GitHub e importalo en Vercel (Framework Preset: Other, sin comando de build).
 
 La tabla `partidas` y `practicas` de una base ya existente se actualiza sola la primera vez que el

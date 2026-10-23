@@ -20,7 +20,7 @@ Object.assign(process.env, { SEMILLA: entorno.SEMILLA, FECHA_INICIO: entorno.FEC
 
 // Mismos datos y misma semilla que el servidor: así sabemos quién es el jugador de cada día.
 const { jugadorDelDia, datos } = await import('../lib/datos.js');
-const { basicasDe, categoriasDe, puntaje } = await import('../lib/juego.js');
+const { CATEGORIAS, basicasDe, categoriasDe, puntaje } = await import('../lib/juego.js');
 
 const TOKEN_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const TOKEN_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -162,7 +162,11 @@ test('pedir una categoría revela una pista y baja el puntaje 100', async () => 
 });
 
 test('pedir una categoría que el jugador no tiene, o inventada, falla con un mensaje claro', async () => {
-  for (const categoria of ['apodo', 'palmares', 'dorsal', 'inventada', '', null]) {
+  // Categorías del catálogo que este jugador no tiene, más una inventada y valores vacíos:
+  // ninguna le puede dar una pista válida.
+  const dia = jugadorDelDia(DIA);
+  const sinDatos = CATEGORIAS.map((c) => c.id).filter((id) => !categoriasDe(dia).has(id));
+  for (const categoria of [...sinDatos, 'inventada', '', null]) {
     const r = await api('/api/pista', { token: TOKEN_A, cuerpo: { categoria } });
     assert.equal(r.status, 422, `categoría ${JSON.stringify(categoria)}`);
     assert.equal(r.datos.error, 'categoria');
