@@ -1,0 +1,396 @@
+[
+ {
+  "origen": "ejemplo",
+  "foto": null,
+  "fotoPagina": null,
+  "posiciones": [],
+  "retiroIncompleto": false,
+  "activo": false,
+  "retiro": 1997,
+  "jugable": true,
+  "selecciones": [],
+  "id": "ejemplo-maradona",
+  "nombre": "Diego Maradona",
+  "alias": [
+   "Diego Armando Maradona",
+   "Pelusa",
+   "El Diez"
+  ],
+  "nacimiento": 1960,
+  "popularidad": 175,
+  "posicion": "Mediocampista",
+  "alturaCm": 165,
+  "debut": 1976,
+  "titulo": "Mundial 1986",
+  "debutSeleccion": 1977,
+  "carrera": [
+   {
+    "club": "Argentinos Juniors",
+    "desde": 1976,
+    "hasta": 1981
+   },
+   {
+    "club": "Boca Juniors",
+    "desde": 1981,
+    "hasta": 1982
+   },
+   {
+    "club": "FC Barcelona",
+    "desde": 1982,
+    "hasta": 1984
+   },
+   {
+    "club": "Napoli",
+    "desde": 1984,
+    "hasta": 1991
+   },
+   {
+    "club": "Sevilla",
+    "desde": 1992,
+    "hasta": 1993
+   },
+   {
+    "club": "Newell's Old Boys",
+    "desde": 1993,
+    "hasta": 1993
+   },
+   {
+    "club": "Boca Juniors",
+    "desde": 1995,
+    "hasta": 1997
+   }
+  ]
+ },
+ {
+  "origen": "ejemplo",
+  "foto": null,
+  "fotoPagina": null,
+  "posiciones": [],
+  "retiroIncompleto": false,
+  "activo": true,
+  "retiro": null,
+  "jugable": true,
+  "selecciones": [],
+  "id": "ejemplo-messi",
+  "nombre": "Lionel Messi",
+  "alias": [
+   "Leo Messi",
+   "Lionel Andrés Messi",
+   "Pulga"
+  ],
+  "nacimiento": 1987,
+  "popularidad": 227,
+  "posicion": "Delantero",
+  "alturaCm": 170,
+  "debut": 2004,
+  "titulo": "Mundial 2022",
+  "debutSeleccion": 2005,
+  "carrera": [
+   {
+    "club": "FC Barcelona",
+    "desde": 2004,
+    "hasta": 2021
+   },
+   {
+    "club": "Paris Saint-Germain",
+    "desde": 2021,
+    "hasta": 2023
+   },
+   {
+    "club": "Inter Miami",
+    "desde": 2023,
+    "hasta": null
+   }
+  ]
+ },
+ {
+  "origen": "ejemplo",
+  "foto": null,
+  "fotoPagina": null,
+  "posiciones": [],
+  "retiroIncompleto": false,
+  "activo": false,
+  "retiro": 2005,
+  "jugable": true,
+  "selecciones": [],
+  "id": "ejemplo-batistuta",
+  "nombre": "Gabriel Batistuta",
+  "alias": [
+   "Batigol",
+   "Gabriel Omar Batistuta"
+  ],
+  "nacimiento": 1969,
+  "popularidad": 69,
+  "posicion": "Delantero",
+  "alturaCm": 185,
+  "debut": 1988,
+  "titulo": "Copa América 1991",
+  "debutSeleccion": 1991,
+  "carrera": [
+   {
+    "club": "Newell's Old Boys",
+    "desde": 1988,
+    "hasta": 1989
+   },
+   {
+    "club": "River Plate",
+    "desde": 1989,
+    "hasta": 1990
+   },
+   {
+    "club": "Boca Juniors",
+    "desde": 1990,
+    "hasta": 1991
+   },
+   {
+    "club": "Fiorentina",
+    "desde": 1991,
+    "hasta": 2000
+   },
+   {
+    "club": "Roma",
+    "desde": 2000,
+    "hasta": 2003
+   },
+   {
+    "club": "Inter",
+    "desde": 2003,
+    "hasta": 2003
+   },
+   {
+    "club": "Al-Arabi",
+    "desde": 2003,
+    "hasta": 2005
+   }
+  ]
+ },
+ {
+  "origen": "ejemplo",
+  "foto": null,
+  "fotoPagina": null,
+  "posiciones": [],
+  "retiroIncompleto": false,
+  "activo": false,
+  "retiro": 2014,
+  "jugable": true,
+  "selecciones": [],
+  "id": "ejemplo-zanetti",
+  "nombre": "Javier Zanetti",
+  "alias": [
+   "Pupi"
+  ],
+  "nacimiento": 1973,
+  "popularidad": 72,
+  "posicion": "Defensor",
+  "alturaCm": 178,
+  "debut": 1992,
+  "titulo": "Champions League 2010",
+  "debutSeleccion": 1994,
+  "carrera": [
+   {
+    "club": "Talleres de Remedios de Escalada",
+    "desde": 1992,
+    "hasta": 1993
+   },
+   {
+    "club": "Banfield",
+    "desde": 1993,
+    "hasta": 1995
+   },
+   {
+    "club": "Inter",
+    "desde": 1995,
+    "hasta": 2014
+   }
+  ]
+ },
+ {
+  "origen": "ejemplo",
+  "foto": null,
+  "fotoPagina": null,
+  "posiciones": [],
+  "retiroIncompleto": false,
+  "activo": false,
+  "retiro": 2015,
+  "jugable": true,
+  "selecciones": [],
+  "id": "ejemplo-riquelme",
+  "nombre": "Juan Román Riquelme",
+  "alias": [
+   "Román Riquelme",
+   "Román",
+   "Riquelme"
+  ],
+  "nacimiento": 1978,
+  "popularidad": 60,
+  "posicion": "Mediocampista",
+  "alturaCm": 182,
+  "debut": 1996,
+  "titulo": "Copa Libertadores 2007",
+  "debutSeleccion": 1997,
+  "carrera": [
+   {
+    "club": "Boca Juniors",
+    "desde": 1996,
+    "hasta": 2002
+   },
+   {
+    "club": "FC Barcelona",
+    "desde": 2002,
+    "hasta": 2003
+   },
+   {
+    "club": "Villarreal",
+    "desde": 2003,
+    "hasta": 2007
+   },
+   {
+    "club": "Boca Juniors",
+    "desde": 2007,
+    "hasta": 2014
+   },
+   {
+    "club": "Argentinos Juniors",
+    "desde": 2014,
+    "hasta": 2015
+   }
+  ]
+ },
+ {
+  "origen": "ejemplo",
+  "foto": null,
+  "fotoPagina": null,
+  "posiciones": [],
+  "retiroIncompleto": false,
+  "activo": false,
+  "retiro": 2021,
+  "jugable": true,
+  "selecciones": [],
+  "id": "ejemplo-tevez",
+  "nombre": "Carlos Tevez",
+  "alias": [
+   "Carlitos Tevez",
+   "Apache",
+   "El Apache"
+  ],
+  "nacimiento": 1984,
+  "popularidad": 76,
+  "posicion": "Delantero",
+  "alturaCm": 173,
+  "debut": 2001,
+  "titulo": "Copa Libertadores 2003",
+  "debutSeleccion": 2004,
+  "carrera": [
+   {
+    "club": "Boca Juniors",
+    "desde": 2001,
+    "hasta": 2004
+   },
+   {
+    "club": "Corinthians",
+    "desde": 2005,
+    "hasta": 2006
+   },
+   {
+    "club": "West Ham United",
+    "desde": 2006,
+    "hasta": 2007
+   },
+   {
+    "club": "Manchester United",
+    "desde": 2007,
+    "hasta": 2009
+   },
+   {
+    "club": "Manchester City",
+    "desde": 2009,
+    "hasta": 2013
+   },
+   {
+    "club": "Juventus",
+    "desde": 2013,
+    "hasta": 2015
+   },
+   {
+    "club": "Boca Juniors",
+    "desde": 2015,
+    "hasta": 2016
+   },
+   {
+    "club": "Shanghai Shenhua",
+    "desde": 2017,
+    "hasta": 2017
+   },
+   {
+    "club": "Boca Juniors",
+    "desde": 2018,
+    "hasta": 2021
+   }
+  ]
+ },
+ {
+  "origen": "ejemplo",
+  "foto": null,
+  "fotoPagina": null,
+  "posiciones": [],
+  "retiroIncompleto": false,
+  "activo": true,
+  "retiro": null,
+  "jugable": true,
+  "selecciones": [],
+  "id": "ejemplo-dimaria",
+  "nombre": "Ángel Di María",
+  "alias": [
+   "Fideo",
+   "Angel Di Maria"
+  ],
+  "nacimiento": 1988,
+  "popularidad": 85,
+  "posicion": "Delantero",
+  "alturaCm": 180,
+  "debut": 2005,
+  "debutSeleccion": 2008,
+  "carrera": [
+   {
+    "club": "Rosario Central",
+    "desde": 2005,
+    "hasta": 2007
+   },
+   {
+    "club": "Benfica",
+    "desde": 2007,
+    "hasta": 2010
+   },
+   {
+    "club": "Real Madrid",
+    "desde": 2010,
+    "hasta": 2014
+   },
+   {
+    "club": "Manchester United",
+    "desde": 2014,
+    "hasta": 2015
+   },
+   {
+    "club": "Paris Saint-Germain",
+    "desde": 2015,
+    "hasta": 2022
+   },
+   {
+    "club": "Juventus",
+    "desde": 2022,
+    "hasta": 2023
+   },
+   {
+    "club": "Benfica",
+    "desde": 2023,
+    "hasta": 2025
+   },
+   {
+    "club": "Rosario Central",
+    "desde": 2025,
+    "hasta": null
+   }
+  ]
+ }
+]
