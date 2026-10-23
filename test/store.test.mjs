@@ -54,7 +54,7 @@ after(() => {
   }
 });
 
-test('el init agrega la columna pedidas y se puede correr dos veces seguidas', async () => {
+test('el init agrega las columnas pedidas y argentina, y se puede correr varias veces seguidas', async () => {
   const store = await import('../lib/store.js');
   await store.crearEsquema();
   await store.crearEsquema(); // idempotente: la segunda vez no tiene que explotar
@@ -66,6 +66,7 @@ test('el init agrega la columna pedidas y se puede correr dos veces seguidas', a
 
   const pr = await store.obtenerPractica('vieja-1', TOKEN);
   assert.deepEqual(pr.pedidas, []);
+  assert.equal(pr.argentina, false, 'una práctica vieja sin la columna vale como "sin el checkbox"');
 });
 
 test('al guardar, la columna pistas queda igual a cuántas pistas se pidieron', async () => {
@@ -106,4 +107,20 @@ test('un pedidas corrupto en la base no voltea el servidor', async () => {
   });
   db.close();
   assert.deepEqual((await store.obtenerPartida('2026-11-15', TOKEN)).pedidas, []);
+});
+
+test('una práctica nueva guarda el flag argentina y se puede leer de vuelta', async () => {
+  const store = await import('../lib/store.js');
+  await store.crearPractica({
+    id: 'nueva-1',
+    token: TOKEN,
+    jugador: 'Q2',
+    grupo: 'sudamerica',
+    dificultad: 'facil',
+    argentina: true,
+    inicio: 4000,
+  });
+  const pr = await store.obtenerPractica('nueva-1', TOKEN);
+  assert.equal(pr.argentina, true);
+  assert.equal(pr.grupo, 'sudamerica');
 });

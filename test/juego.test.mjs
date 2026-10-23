@@ -6,6 +6,7 @@ import {
   categoriasDe,
   construirIndice,
   elegirDelDia,
+  esArgentinoOJugoEnArgentina,
   esElegible,
   fechaDeHoy,
   normalizar,
@@ -171,6 +172,20 @@ test('esElegible descarta a los jugadores marcados como excluidos', () => {
   };
   assert.equal(esElegible(base), true);
   assert.equal(esElegible({ ...base, excluir: true }), false);
+});
+
+// ───────────── Pool del jugador del día: Argentina ─────────────
+
+test('esArgentinoOJugoEnArgentina: argentino por origen o por nacionalidad, o jugoEnArgentina true', () => {
+  assert.equal(esArgentinoOJugoEnArgentina({ origen: 'Argentinos' }), true);
+  assert.equal(esArgentinoOJugoEnArgentina({ nacionalidad: { codigo: 'ar' } }), true);
+  assert.equal(esArgentinoOJugoEnArgentina({ jugoEnArgentina: true }), true);
+  // Un argentino que nunca jugó en el país (Messi) igual cuenta: la regla es más laxa que el checkbox de práctica.
+  assert.equal(esArgentinoOJugoEnArgentina({ origen: 'Argentinos', jugoEnArgentina: false }), true);
+  // Ninguna de las tres condiciones: afuera.
+  assert.equal(esArgentinoOJugoEnArgentina({ origen: 'Sudamericanos', nacionalidad: { codigo: 'uy' }, jugoEnArgentina: false }), false);
+  assert.equal(esArgentinoOJugoEnArgentina({}), false);
+  assert.equal(esArgentinoOJugoEnArgentina({ jugoEnArgentina: 'true' }), false, 'tiene que ser el booleano true, no un string');
 });
 
 test('el jugador del día es siempre el mismo para la misma fecha y no se repite en toda la vuelta', () => {

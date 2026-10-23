@@ -182,7 +182,8 @@ test('una categoría agotada se rechaza y dice de cuál se trata', async () => {
   }
   assert.equal(r.datos.pedidas, clubes.length);
   assert.deepEqual(r.datos.reveladas.map((x) => x.valor), clubes.map((c) => c.valor));
-  assert.ok(r.datos.disponibles.every((d) => d.quedan === 0), 'ya no queda nada por pedir');
+  // Solo se agotó "carrera": otras categorías del jugador (si tiene) pueden seguir con pistas.
+  assert.equal(r.datos.disponibles.find((d) => d.id === 'carrera').quedan, 0, 'ya no queda carrera por pedir');
   assert.equal(r.datos.puntajeActual, puntaje(clubes.length));
 
   r = await api('/api/pista', { token: TOKEN_C, cuerpo: { categoria: 'carrera' } });
@@ -193,6 +194,7 @@ test('una categoría agotada se rechaza y dice de cuál se trata', async () => {
 
 test('con todas las pistas pedidas se sigue jugando hasta gastar los 3 intentos', async () => {
   const dia = jugadorDelDia(DIA);
+  const clubes = clubesDelDia();
   let r;
   for (let n = 0; n < 2; n++) {
     r = await api('/api/adivinar', { token: TOKEN_C, cuerpo: { id: otroJugador(dia.id, n).id } });
@@ -202,7 +204,12 @@ test('con todas las pistas pedidas se sigue jugando hasta gastar los 3 intentos'
   assert.equal(r.datos.estado, 'perdido');
   assert.equal(r.datos.puntaje, 0);
   assert.equal(r.datos.resultado.nombre, dia.nombre);
-  assert.ok(r.datos.todas.every((t) => t.usada), 'este token había pedido todas');
+  // Este token solo pidió "carrera" (en el test anterior): esas quedan marcadas como usadas,
+  // el resto de las categorías que tenga el jugador (si tiene otras) quedan sin usar.
+  const carrera = r.datos.todas.filter((t) => t.categoria === 'carrera');
+  assert.equal(carrera.length, clubes.length);
+  assert.ok(carrera.every((t) => t.usada), 'pidió todos los clubes');
+  assert.ok(r.datos.todas.filter((t) => t.categoria !== 'carrera').every((t) => !t.usada), 'no pidió nada más');
 });
 
 test('acertar escribiendo el nombre sin tildes termina la partida con el puntaje nuevo', async () => {
