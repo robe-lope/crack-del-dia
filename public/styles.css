@@ -177,6 +177,13 @@ input {
   overflow: hidden;
   background: var(--paleta);
   border-radius: 8px;
+  transition: width 0.35s ease, height 0.35s ease;
+}
+
+/* Un poco más grande al revelar la foto del resultado. */
+.silueta--grande {
+  width: 5.5rem;
+  height: 5.5rem;
 }
 
 .silueta svg {
@@ -185,10 +192,20 @@ input {
   fill: #27493a;
 }
 
-.silueta img {
+/* Al terminar la partida (ganada o perdida), reemplaza a la silueta con un fundido. */
+.silueta .foto-jugador {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: 50% 15%; /* la cara, no el torso */
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.silueta .foto-jugador--visible {
+  opacity: 1;
 }
 
 .silueta .bandera {
@@ -644,32 +661,6 @@ input {
   margin-top: 1.4rem;
   padding-top: 1.2rem;
   border-top: 2px dashed var(--linea);
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.2rem 1rem;
-  align-items: center;
-}
-
-.final-foto {
-  width: 6.5rem;
-  height: 6.5rem;
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--paleta);
-  display: grid;
-  place-items: end center;
-}
-
-.final-foto img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.final-foto svg {
-  width: 100%;
-  height: 100%;
-  fill: #27493a;
 }
 
 .final-nombre {
@@ -700,7 +691,6 @@ input {
 }
 
 .final-acciones {
-  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
@@ -708,7 +698,6 @@ input {
 }
 
 .proximo {
-  grid-column: 1 / -1;
   margin: 0.9rem 0 0;
   color: var(--tiza-suave);
   font-size: 0.95rem;
@@ -724,7 +713,7 @@ input {
 }
 
 #apodo-final {
-  grid-column: 1 / -1;
+  margin-top: 0.4rem;
 }
 
 /* ─────────── Apodo ─────────── */
@@ -881,15 +870,17 @@ input {
   .adivinar {
     grid-template-columns: 1fr;
   }
-  .final {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .paleta--nueva,
   .modal[open] {
     animation: none;
+  }
+  .silueta,
+  .silueta--grande,
+  .foto-jugador {
+    transition: none;
   }
 }
 

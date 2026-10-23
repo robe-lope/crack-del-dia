@@ -224,6 +224,10 @@ test('acertar escribiendo el nombre sin tildes termina la partida con el puntaje
   assert.equal(r.datos.estado, 'ganado');
   assert.equal(r.datos.puntaje, puntaje(pedidas));
   assert.equal(r.datos.resultado.nombre, dia.nombre);
+  // El frontend reemplaza la silueta por esta foto al terminar (ganada o perdida): tienen que venir
+  // las dos claves, aunque sea con null si el jugador no tiene foto.
+  assert.equal(r.datos.resultado.foto, dia.foto ?? null);
+  assert.equal(r.datos.resultado.fotoPagina, dia.fotoPagina ?? null);
 
   // Al terminar se muestran todas, con las que no se usaron marcadas.
   const todosLosItems = [...categoriasDe(dia).values()].flat();
@@ -253,6 +257,9 @@ test('al tercer nombre equivocado la partida termina en 0 puntos, con pistas sin
   assert.equal(r.datos.estado, 'perdido');
   assert.equal(r.datos.puntaje, 0);
   assert.equal(r.datos.resultado.nombre, dia.nombre);
+  // La foto se revela también al perder, no solo al ganar.
+  assert.equal(r.datos.resultado.foto, dia.foto ?? null);
+  assert.equal(r.datos.resultado.fotoPagina, dia.fotoPagina ?? null);
   assert.ok(r.datos.todas.length > 0);
   assert.ok(r.datos.todas.every((t) => !t.usada), 'no pidió ninguna: van todas marcadas como sin usar');
 });

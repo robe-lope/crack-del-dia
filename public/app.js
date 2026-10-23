@@ -2,8 +2,6 @@
 // El servidor decide todo (qué pistas se ven, si acertaste, cuántos puntos). Acá solo se dibuja y se escribe.
 
 const NOMBRE = 'Crack del Día';
-const SILUETA =
-  '<svg viewBox="0 0 64 64" focusable="false" aria-hidden="true"><circle cx="32" cy="24" r="11"/><path d="M8 64c1-15 10-23 24-23s23 8 24 23z"/></svg>';
 
 const $ = (selector, dentro = document) => dentro.querySelector(selector);
 
@@ -191,11 +189,15 @@ const contadorDePistas = (n) => (n === 0 ? 'Sin pistas pedidas' : n === 1 ? '1 p
 function pintar(v) {
   const practica = v.modo === 'practica';
   const anterior = practica ? vistaPractica : vistaDiaria;
-  const previas = anterior && anterior.partida === v.partida ? anterior.reveladas.length : 0;
+  const mismaPartida = Boolean(anterior) && anterior.partida === v.partida;
+  const previas = mismaPartida ? anterior.reveladas.length : 0;
   vista = v;
   if (practica) vistaPractica = v;
   else vistaDiaria = v;
   const terminada = v.estado !== 'jugando';
+  // Si recién ahora pasó de "jugando" a terminada (en esta misma sesión), la foto se anima.
+  // Si llega terminada desde el arranque (recargaste la página a mitad de la espera), aparece directo.
+  const reveladaRecien = terminada && mismaPartida && anterior.estado === 'jugando';
 
   $('#num').textContent = practica ? 'Práctica' : `Nº ${v.numero}`;
   $('#racha').textContent = !practica && v.racha > 0 ? `Racha ${v.racha}` : '';
@@ -231,14 +233,56 @@ function pintar(v) {
   if (terminada) cerrarModal();
   else if ($('#modal').open) pintarModal(v);
 
-  pintarFinal(v);
+  pintarFinal(v, reveladaRecien);
   pintarApodos();
 }
 
-function pintarFinal(v) {
+// Reemplaza la silueta del encabezado por la foto del resultado (ganado o perdido), con un fundido.
+// Mientras se juega, o si el jugador no tiene foto, queda la silueta de siempre.
+function revelarFoto(v, animar) {
+  const foto = $('#foto-jugador');
+  const silueta = $('#silueta');
+  const terminada = v.estado !== 'jugando';
+
+  if (!terminada || !v.resultado?.foto) {
+    foto.hidden = true;
+    foto.classList.remove('foto-jugador--visible');
+    foto.removeAttribute('src');
+    silueta.classList.remove('silueta--grande');
+    return;
+  }
+
+  const yaEsta = foto.src === v.resultado.foto && !foto.hidden;
+  if (yaEsta) return; // ya se estaba mostrando esta misma foto: no reiniciar el fundido
+
+  const mostrar = () => {
+    foto.hidden = false;
+    silueta.classList.add('silueta--grande');
+    if (animar) {
+      // Dos vueltas de rAF: así el navegador llega a pintar el estado "oculta" antes de animar.
+      requestAnimationFrame(() => requestAnimationFrame(() => foto.classList.add('foto-jugador--visible')));
+    } else {
+      foto.classList.add('foto-jugador--visible'); // sin pasos intermedios: aparece directo
+    }
+  };
+
+  foto.alt = v.resultado.nombre;
+  foto.referrerPolicy = 'no-referrer';
+  foto.classList.remove('foto-jugador--visible');
+  foto.onload = mostrar;
+  foto.onerror = () => {
+    foto.hidden = true;
+    foto.classList.remove('foto-jugador--visible');
+    silueta.classList.remove('silueta--grande'); // si no carga, queda la silueta
+  };
+  foto.src = v.resultado.foto;
+}
+
+function pintarFinal(v, animar) {
   const final = $('#final');
   const terminada = v.estado !== 'jugando';
   final.hidden = !terminada;
+  revelarFoto(v, animar);
   if (!terminada) {
     clearInterval(reloj);
     return;
@@ -263,27 +307,19 @@ function pintarFinal(v) {
     detalle.append(`Gastaste los ${v.intentosMax} intentos y no salió. Mañana hay otro jugador.`);
   }
 
-  const foto = $('#final-foto');
-  foto.innerHTML = SILUETA;
   const credito = $('#final-credito');
-  credito.hidden = true;
-  if (v.resultado.foto) {
-    const img = new Image();
-    img.alt = v.resultado.nombre;
-    img.referrerPolicy = 'no-referrer';
-    img.onload = () => {
-      foto.replaceChildren(img);
-      if (v.resultado.fotoPagina) {
-        const enlace = crear('a', null, 'Wikimedia Commons');
-        enlace.href = v.resultado.fotoPagina;
-        enlace.target = '_blank';
-        enlace.rel = 'noopener noreferrer';
-        credito.replaceChildren('Foto: ', enlace);
-        credito.hidden = false;
-      }
-    };
-    img.src = v.resultado.foto; // si no carga, queda la silueta
+  if (v.resultado.fotoPagina) {
+    const enlace = crear('a', null, 'Wikimedia Commons');
+    enlace.href = v.resultado.fotoPagina;
+    enlace.target = '_blank';
+    enlace.rel = 'noopener noreferrer';
+    credito.replaceChildren('Foto: ', enlace);
+    credito.hidden = false;
+  } else {
+    credito.hidden = true;
   }
+
+  revelarFoto(v, animar);
 
   clearInterval(reloj);
   if (practica) return;

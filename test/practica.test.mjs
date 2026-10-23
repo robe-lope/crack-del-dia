@@ -138,6 +138,9 @@ test('equivocarse gasta intentos sin revelar pistas, y a la tercera se pierde', 
   assert.equal(r.puntaje, 0);
   const era = datos().lista.find((j) => j.nombre === r.resultado.nombre);
   assert.equal(continenteDe(era.nacionalidad.codigo), 'europa');
+  // La práctica también revela la foto al terminar (mismo contrato que el diario).
+  assert.equal(r.resultado.foto, era.foto ?? null);
+  assert.equal(r.resultado.fotoPagina, era.fotoPagina ?? null);
 });
 
 test('pedir una categoría inexistente en práctica falla igual que en el diario', async () => {
