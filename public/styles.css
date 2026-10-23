@@ -923,6 +923,21 @@ input {
   cursor: not-allowed;
 }
 
+.practica-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.7rem 0 0;
+  font-size: 0.98rem;
+  cursor: pointer;
+}
+
+.practica-check input {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: var(--sol);
+}
+
 .practica-detalle {
   min-height: 1.4rem;
   margin: 0.4rem 0 0;

@@ -55,11 +55,11 @@ function obtenerToken() {
 function leerEleccion() {
   try {
     const guardada = JSON.parse(localStorage.getItem('crack:practica') ?? 'null');
-    if (guardada?.grupo && guardada?.dificultad) return guardada;
+    if (guardada?.grupo && guardada?.dificultad) return { ...guardada, argentina: Boolean(guardada.argentina) };
   } catch {
     /* sin almacenamiento */
   }
-  return { grupo: 'todos', dificultad: 'todas' };
+  return { grupo: 'todos', dificultad: 'todas', argentina: false };
 }
 
 function guardarEleccion() {
@@ -688,7 +688,8 @@ async function cargarRanking() {
 const nombreDe = (lista, id) => lista?.find((x) => x.id === id)?.nombre ?? id;
 
 function resumenPractica(v) {
-  return `${nombreDe(opcionesPractica?.grupos, v.grupo)} · ${nombreDe(opcionesPractica?.dificultades, v.dificultad)}`;
+  const base = `${nombreDe(opcionesPractica?.grupos, v.grupo)} · ${nombreDe(opcionesPractica?.dificultades, v.dificultad)}`;
+  return v.argentina ? `${base} · Pasaron por Argentina` : base;
 }
 
 function pintarOpcionesPractica() {
@@ -727,11 +728,14 @@ function pintarOpcionesPractica() {
   );
   $('#dificultad-detalle').textContent =
     opcionesPractica.dificultades.find((d) => d.id === eleccion.dificultad)?.detalle ?? '';
+  $('#practica-argentina').checked = eleccion.argentina;
 }
 
+// Los contadores de cada grupo dependen del checkbox: hay que volver a pedirlos cuando cambia.
 async function cargarPractica() {
   try {
-    const d = await api('/api/practica/estado');
+    const ruta = `/api/practica/estado${eleccion.argentina ? '?argentina=1' : ''}`;
+    const d = await api(ruta);
     opcionesPractica = { grupos: d.grupos, dificultades: d.dificultades };
     if (!opcionesPractica.grupos.some((g) => g.id === eleccion.grupo && g.cantidad > 0)) eleccion.grupo = 'todos';
     if (!opcionesPractica.dificultades.some((x) => x.id === eleccion.dificultad)) eleccion.dificultad = 'todas';
@@ -748,7 +752,7 @@ async function empezarPractica() {
   const boton = $('#practica-jugar');
   boton.disabled = true;
   try {
-    const v = await api('/api/practica/nueva', { grupo: eleccion.grupo, dificultad: eleccion.dificultad });
+    const v = await api('/api/practica/nueva', { grupo: eleccion.grupo, dificultad: eleccion.dificultad, argentina: eleccion.argentina });
     vistaPractica = null; // es otra partida: las pistas aparecen con el giro
     mostrar('juego', 'practica');
     limpiarCampo();
@@ -816,8 +820,13 @@ async function iniciar() {
   $('#practica-filtros').addEventListener('click', () => mostrar('practica'));
   $('#practica-otro').addEventListener('click', async () => {
     if (!vistaPractica) return;
-    eleccion = { grupo: vistaPractica.grupo, dificultad: vistaPractica.dificultad };
+    eleccion = { grupo: vistaPractica.grupo, dificultad: vistaPractica.dificultad, argentina: Boolean(vistaPractica.argentina) };
     await empezarPractica();
+  });
+  $('#practica-argentina').addEventListener('change', (e) => {
+    eleccion.argentina = e.target.checked;
+    guardarEleccion();
+    cargarPractica();
   });
   $('#ver-ranking').addEventListener('click', () => mostrar('ranking'));
   $('#compartir').addEventListener('click', async () => {
