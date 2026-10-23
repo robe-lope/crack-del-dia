@@ -10,7 +10,7 @@ de esa categoría. Cada pista pedida baja el puntaje 100, con un piso de 100. Cu
 ```
 npm install
 npm run dev        # http://localhost:3000
-npm test           # 47 pruebas (lógica + flujo completo contra el servidor real)
+npm test           # 70 pruebas (lógica + flujo completo contra el servidor real)
 ```
 
 Sin `data/players.json` usa `data/players.sample.json` (7 jugadores de ejemplo, **sin verificar**) y lo avisa en pantalla.
@@ -35,6 +35,12 @@ Y para sumar **apodo, palmarés, lugar de nacimiento y dorsal**, también en tu 
 node bajar-extras.mjs data/players.json
 ```
 
+Y para saber quién **pasó por el fútbol argentino** (ver [Fútbol argentino](#fútbol-argentino-bajar-argentinamjs) más abajo), que decide quién puede salir como jugador del día y alimenta el checkbox de práctica:
+
+```
+node bajar-argentina.mjs data/players.json
+```
+
 El limpiador marca con `excluir` a quienes no sirven como jugador del día (entrenadores, datos dudosos); siguen en el autocompletado.
 
 En desarrollo se puede probar otro día con `?fecha=2026-11-05` en las llamadas a `/api/*`.
@@ -49,7 +55,8 @@ En desarrollo se puede probar otro día con `?fecha=2026-11-05` en las llamadas 
 3. Subí el proyecto a GitHub e importalo en Vercel (Framework Preset: Other, sin comando de build).
 
 La tabla `partidas` y `practicas` de una base ya existente se actualiza sola la primera vez que el
-servidor arranca (agrega la columna `pedidas` con `ALTER TABLE`; ver [Reglas de la partida](#reglas-de-la-partida)). No hace falta tocar nada a mano en Turso.
+servidor arranca (agrega las columnas `pedidas` y `argentina` con `ALTER TABLE`; ver [Reglas de la
+partida](#reglas-de-la-partida) y [Modo práctica](#modo-práctica)). No hace falta tocar nada a mano en Turso.
 
 ## Qué hay en cada carpeta
 
@@ -63,13 +70,27 @@ servidor arranca (agrega la columna `pedidas` con `ALTER TABLE`; ver [Reglas de 
 
 Pestaña **Práctica**: un jugador al azar filtrado por grupo (Todos, Argentinos, Sudamérica, Europa) y dificultad (Fácil, Medio, Difícil, Mezcla). No suma al ranking ni a la racha, y la partida sigue donde la dejaste si recargás. Usa exactamente la misma mecánica de pistas y puntaje que el modo diario.
 
-- Los grupos salen de la nacionalidad (`nacionalidad.codigo`) y el continente de `lib/continentes.js`. Sin nacionalidad cargada, solo funciona "Argentinos" (por el grupo con el que se bajó).
-- La dificultad se mide **dentro del grupo elegido**, por fama (idiomas de Wikipedia): el tercio más famoso es Fácil, el del medio Medio y el resto Difícil.
+- Los grupos salen de la nacionalidad (`nacionalidad.codigo`) y el continente de `lib/continentes.js`. Sin nacionalidad cargada, solo funciona "Argentinos" (por el grupo con el que se bajó). Ojo: "Sudamérica" incluye a los argentinos (el continente no los separa); "Argentinos" es un grupo aparte, no excluyente.
+- Checkbox **"Pasaron por Argentina"**, debajo de los grupos: restringe el pool a `jugoEnArgentina === true`, combinado con el grupo y la dificultad elegidos. Los contadores de cada grupo se recalculan según el checkbox (`GET /api/practica/estado?argentina=1`). Se guarda en `localStorage` junto con el grupo y la dificultad.
+- La dificultad se mide **dentro del pool ya filtrado** (grupo + checkbox), por fama (idiomas de Wikipedia): el tercio más famoso es Fácil, el del medio Medio y el resto Difícil.
 - No se repiten los jugadores que ya te tocaron hasta que los jugás a todos.
-- Endpoints: `api/practica/estado`, `nueva`, `adivinar`, `pista` (este último con `{ partida, categoria }`).
+- Endpoints: `api/practica/estado` (GET, admite `?argentina=1`), `nueva` (POST `{ grupo, dificultad, argentina }`), `adivinar`, `pista` (POST `{ partida, categoria }`). Si la combinación de grupo + dificultad + checkbox queda sin nadie, `nueva` devuelve el mismo error de siempre (`sin_jugadores`).
 - Para correcciones manuales sin volver a consultar Wikidata: `node bajar-nacionalidad.mjs data/players.json --solo-manual`.
 
+El checkbox es **distinto** de la regla que decide el jugador del día (ver abajo), a propósito: acá
+hace falta haber jugado en un club argentino, nacionalidad o país de origen no alcanzan. Un argentino
+que nunca jugó en el país (Messi) sale en el diario pero no en práctica con el checkbox tildado.
+
 ## Reglas de la partida
+
+**Quién puede ser el jugador del día**: tiene que cumplir los criterios de siempre (`esElegible` en
+`lib/juego.js`: jugable, no excluido, con al menos 3 pistas básicas y alguna categoría para pedir, por
+encima del piso de fama de su origen) y, además, tener algo que ver con Argentina: ser argentino (por
+`origen === 'Argentinos'` o `nacionalidad.codigo === 'ar'`) **o** haber jugado en un club argentino
+(`jugoEnArgentina === true`). Los no-argentinos que entran por `jugoEnArgentina` siguen sujetos al piso
+de fama de su propio origen (Sudamericanos 55, Estrellas mundiales 80 por defecto): un uruguayo o una
+estrella mundial que jugó acá pero no llega a ese piso no sale igual. Un argentino que nunca jugó en el
+país (como Messi) sí puede salir, porque ser argentino ya alcanza.
 
 **Pistas básicas** (gratis, se ven todas desde que arranca la partida, en este orden): posición, altura,
 debut, retiro (o "—" si sigue activo; se omite si el dato está incompleto) y debut en la selección (se
@@ -136,9 +157,38 @@ Ese mismo archivo también sirve para corregir a mano `apodo`, `palmares`, `luga
 cuando Wikidata trae algo raro o vacío (mismo formato: `{ "Qid": { "apodo": "..." } }`). El script
 limpia valores obviamente malos (apodo igual al nombre, textos vacíos, duplicados) antes de guardar.
 
+## Fútbol argentino (`bajar-argentina.mjs`)
+
+Mismo patrón que los otros `bajar-*.mjs`: corré `node bajar-argentina.mjs data/players.json` en tu PC
+(con internet abierto a Wikidata). Agrega a cada jugador:
+
+- `jugoEnArgentina`: `true` o `false`. Sale de los pasos de carrera (P54) cuyo club tiene a Argentina
+  como país (P17) o cuya liga es de Argentina (P118 → P17), sin contar selecciones, juveniles, reservas
+  ni filiales, y descartando los pasos que empezaron antes de los 15 años (inferiores: un paso por las
+  divisiones menores de un club argentino no cuenta).
+- `clubesArgentinos`: array con los nombres de esos clubes (solo si `jugoEnArgentina` es `true`).
+
+Hace copia de seguridad la primera vez (`<archivo>.sin-argentina.bak`), pide de a 100 ids por consulta,
+reintenta si Wikidata responde 429 o se corta la conexión, y al final imprime un resumen: cuántos
+jugadores pasaron por Argentina, cuántos argentinos **no** figuran como tales (para chequear casos como
+Messi), y los jugadores de otros países más famosos que sí pasaron por acá. Admite `--solo-manual` para
+no consultar Wikidata y aplicar solo las correcciones de `argentina-manual.json`:
+
+```json
+{ "Q12345": true, "Q67890": false }
+```
+
+Estos dos campos son los que usa el servidor para decidir quién puede ser jugador del día (sumado a si
+es argentino) y para el checkbox "Pasaron por Argentina" del modo práctica — ver
+[Reglas de la partida](#reglas-de-la-partida) y [Modo práctica](#modo-práctica).
+
 ## Límites conocidos
 
 - Sin cuentas, el ranking se puede manipular: quien borra los datos del navegador juega de nuevo, ya sabiendo la respuesta. Para un ranking serio hace falta un login (por ejemplo con Google).
 - Cambiar `players.json` o `SEMILLA` cambia el orden de los jugadores de los días que vienen.
 - El palmarés "de a mano" (`titulo`, por ejemplo "Clausura 2004") no viene de Wikidata.
 - No hay límite de intentos por minuto.
+- El pool del jugador del día (argentinos + quienes jugaron acá) es bastante más chico que el total de
+  jugables: muchas estrellas mundiales que nunca jugaron en Argentina quedan afuera por más famosas que
+  sean. Si con el tiempo se queda corto, conviene revisar `jugoEnArgentina` con `bajar-argentina.mjs` o
+  bajar el piso de fama por origen.
