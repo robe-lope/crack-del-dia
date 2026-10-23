@@ -89,13 +89,16 @@ test('el estado inicial ofrece grupos con cantidad y no hay partida en curso', a
   assert.ok(r.datos.grupos[0].cantidad >= r.datos.grupos[1].cantidad);
 });
 
-test('una práctica nueva muestra una sola pista, sin filtrar quién es', async () => {
+test('una práctica nueva muestra las básicas y ninguna pista pedida, sin filtrar quién es', async () => {
   const r = await api('/api/practica/nueva', { token: T1, cuerpo: { grupo: 'europa', dificultad: 'facil' } });
   assert.equal(r.status, 200);
   const v = r.datos;
   assert.equal(v.modo, 'practica');
   assert.equal(v.estado, 'jugando');
-  assert.equal(v.pistas.length, 1);
+  assert.ok(v.basicas.length >= 3);
+  assert.deepEqual(v.reveladas, []);
+  assert.equal(v.pedidas, 0);
+  assert.equal(v.puntajeActual, 1000);
   assert.equal(v.intentosMax, 3);
   assert.equal(v.pais.codigo.length > 0, true);
   assert.equal(continenteDe(v.pais.codigo), 'europa', 'el jugador pertenece al grupo pedido');
@@ -115,24 +118,37 @@ test('se recupera la práctica en curso y solo la ve su dueño', async () => {
   assert.equal(otroEstado.datos.partida, null);
 });
 
-test('equivocarse gasta intentos sin abrir pistas, y a la tercera se pierde', async () => {
+test('equivocarse gasta intentos sin revelar pistas, y a la tercera se pierde', async () => {
   const e = await api('/api/practica/estado', { token: T1 });
   const id = e.datos.partida.partida; // grupo europa
   const equivocados = ajenos([...EUR]);
 
-  let r = await api('/api/practica/pista', { token: T1, cuerpo: { partida: id } });
-  assert.equal(r.datos.pistas.length, 2);
+  let r = await api('/api/practica/pista', { token: T1, cuerpo: { partida: id, categoria: 'carrera' } });
+  assert.equal(r.datos.pedidas, 1);
+  assert.equal(r.datos.puntajeActual, 900);
 
   r = await api('/api/practica/adivinar', { token: T1, cuerpo: { partida: id, id: equivocados[0].id } });
   assert.equal(r.datos.estado, 'jugando');
   assert.equal(r.datos.intentos.length, 1);
-  assert.equal(r.datos.pistas.length, 2, 'equivocarse no abre pistas');
+  assert.equal(r.datos.pedidas, 1, 'equivocarse no revela pistas');
+  assert.equal(r.datos.puntajeActual, 900);
 
   r = await perder(T1, id, equivocados.slice(1));
   assert.equal(r.estado, 'perdido');
   assert.equal(r.puntaje, 0);
   const era = datos().lista.find((j) => j.nombre === r.resultado.nombre);
   assert.equal(continenteDe(era.nacionalidad.codigo), 'europa');
+  // La práctica también revela la foto al terminar (mismo contrato que el diario).
+  assert.equal(r.resultado.foto, era.foto ?? null);
+  assert.equal(r.resultado.fotoPagina, era.fotoPagina ?? null);
+});
+
+test('pedir una categoría inexistente en práctica falla igual que en el diario', async () => {
+  const r = await api('/api/practica/nueva', { token: T2, cuerpo: { grupo: 'todos', dificultad: 'todas' } });
+  const id = r.datos.partida;
+  const mala = await api('/api/practica/pista', { token: T2, cuerpo: { partida: id, categoria: 'inventada' } });
+  assert.equal(mala.status, 422);
+  assert.equal(mala.datos.error, 'categoria');
 });
 
 test('una partida terminada no cambia aunque se siga mandando', async () => {

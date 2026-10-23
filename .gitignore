@@ -1,0 +1,5 @@
+node_modules/
+data/juego.db
+*.bak
+/nacionalidades.json
+/argentina.json

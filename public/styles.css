@@ -177,6 +177,13 @@ input {
   overflow: hidden;
   background: var(--paleta);
   border-radius: 8px;
+  transition: width 0.35s ease, height 0.35s ease;
+}
+
+/* Un poco más grande al revelar la foto del resultado. */
+.silueta--grande {
+  width: 5.5rem;
+  height: 5.5rem;
 }
 
 .silueta svg {
@@ -185,10 +192,20 @@ input {
   fill: #27493a;
 }
 
-.silueta img {
+/* Al terminar la partida (ganada o perdida), reemplaza a la silueta con un fundido. */
+.silueta .foto-jugador {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: 50% 15%; /* la cara, no el torso */
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.silueta .foto-jugador--visible {
+  opacity: 1;
 }
 
 .silueta .bandera {
@@ -304,12 +321,6 @@ input {
   background: rgba(0, 0, 0, 0.5);
 }
 
-.paleta--pendiente {
-  min-width: 3.4rem;
-  text-align: center;
-  color: rgba(234, 241, 236, 0.22);
-}
-
 .fila--sin-usar .paleta {
   color: var(--tiza-suave);
   background: transparent;
@@ -339,6 +350,144 @@ input {
   100% {
     transform: rotateX(0);
   }
+}
+
+/* La línea discreta con lo que todavía se puede pedir. */
+.tablero-quedan {
+  margin: 0.9rem 0 0;
+  padding-top: 0.7rem;
+  border-top: 2px dashed var(--linea);
+  color: var(--tiza-suave);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+/* ─────────── Modal de pistas ─────────── */
+
+/* Ojo: el display va con [open] para no pisar el `dialog:not([open]) { display: none }` del navegador. */
+.modal {
+  margin: auto;
+  padding: 0;
+  width: min(26rem, calc(100vw - 1.5rem));
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  background: var(--tablero);
+  border: 2px solid var(--linea);
+  border-radius: 12px;
+  color: var(--tiza);
+}
+
+.modal[open] {
+  display: block;
+  animation: aparecer 0.18s ease-out both;
+}
+
+.modal::backdrop {
+  background: rgba(7, 18, 13, 0.72);
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem);
+  }
+}
+
+.modal-cab {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1rem 1rem 0;
+}
+
+.modal-titulo {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.75rem;
+  line-height: 1.05;
+}
+
+.modal-x {
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  margin: -0.3rem -0.3rem 0 0;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: var(--tiza-suave);
+  font-size: 1.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-ayuda {
+  margin: 0.3rem 1rem 0;
+  color: var(--tiza-suave);
+  font-size: 0.95rem;
+}
+
+.modal-ayuda strong {
+  color: var(--sol);
+}
+
+.modal-categorias {
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.9rem 1rem 1.1rem;
+}
+
+.categoria {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.2rem 0.8rem;
+  width: 100%;
+  min-height: 3.4rem;
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  background: var(--paleta);
+  border: 2px solid var(--linea);
+  border-radius: 8px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.categoria-nombre {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.4rem;
+  line-height: 1.1;
+}
+
+.categoria-costo {
+  grid-row: 1 / 3;
+  grid-column: 2;
+  color: var(--sol);
+  font-weight: 700;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.categoria-detalle {
+  grid-column: 1;
+  color: var(--tiza-suave);
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+.categoria:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.categoria:disabled .categoria-costo {
+  color: var(--tiza-suave);
+  font-weight: 400;
 }
 
 /* ─────────── Formulario ─────────── */
@@ -512,32 +661,6 @@ input {
   margin-top: 1.4rem;
   padding-top: 1.2rem;
   border-top: 2px dashed var(--linea);
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.2rem 1rem;
-  align-items: center;
-}
-
-.final-foto {
-  width: 6.5rem;
-  height: 6.5rem;
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--paleta);
-  display: grid;
-  place-items: end center;
-}
-
-.final-foto img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.final-foto svg {
-  width: 100%;
-  height: 100%;
-  fill: #27493a;
 }
 
 .final-nombre {
@@ -568,7 +691,6 @@ input {
 }
 
 .final-acciones {
-  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
@@ -576,7 +698,6 @@ input {
 }
 
 .proximo {
-  grid-column: 1 / -1;
   margin: 0.9rem 0 0;
   color: var(--tiza-suave);
   font-size: 0.95rem;
@@ -592,7 +713,7 @@ input {
 }
 
 #apodo-final {
-  grid-column: 1 / -1;
+  margin-top: 0.4rem;
 }
 
 /* ─────────── Apodo ─────────── */
@@ -749,14 +870,17 @@ input {
   .adivinar {
     grid-template-columns: 1fr;
   }
-  .final {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .paleta--nueva {
+  .paleta--nueva,
+  .modal[open] {
     animation: none;
+  }
+  .silueta,
+  .silueta--grande,
+  .foto-jugador {
+    transition: none;
   }
 }
 
@@ -788,6 +912,21 @@ input {
 .subpestana:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.practica-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.7rem 0 0;
+  font-size: 0.98rem;
+  cursor: pointer;
+}
+
+.practica-check input {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: var(--sol);
 }
 
 .practica-detalle {

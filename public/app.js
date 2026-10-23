@@ -2,8 +2,6 @@
 // El servidor decide todo (qué pistas se ven, si acertaste, cuántos puntos). Acá solo se dibuja y se escribe.
 
 const NOMBRE = 'Crack del Día';
-const SILUETA =
-  '<svg viewBox="0 0 64 64" focusable="false" aria-hidden="true"><circle cx="32" cy="24" r="11"/><path d="M8 64c1-15 10-23 24-23s23 8 24 23z"/></svg>';
 
 const $ = (selector, dentro = document) => dentro.querySelector(selector);
 
@@ -55,11 +53,11 @@ function obtenerToken() {
 function leerEleccion() {
   try {
     const guardada = JSON.parse(localStorage.getItem('crack:practica') ?? 'null');
-    if (guardada?.grupo && guardada?.dificultad) return guardada;
+    if (guardada?.grupo && guardada?.dificultad) return { ...guardada, argentina: Boolean(guardada.argentina) };
   } catch {
     /* sin almacenamiento */
   }
-  return { grupo: 'todos', dificultad: 'todas' };
+  return { grupo: 'todos', dificultad: 'todas', argentina: false };
 }
 
 function guardarEleccion() {
@@ -100,44 +98,72 @@ function mensaje(texto, esError = false) {
 
 // ───────────── Tablero ─────────────
 
+// Una fila del tablero. `animar` es el lugar en la tanda de paletas nuevas (null: no se da vuelta).
+function filaDePista({ etiqueta, valor, club = false, sinUsar = false, animar = null }) {
+  const fila = crear('li', `fila${club ? ' fila--club' : ''}${sinUsar ? ' fila--sin-usar' : ''}`);
+  fila.append(crear('span', 'fila-etiqueta', etiqueta));
+  const caja = crear('div', 'valor');
+  valor.split(' ').forEach((palabra, k) => {
+    const paleta = crear('span', `paleta${animar == null ? '' : ' paleta--nueva'}`, palabra);
+    if (animar != null) paleta.style.setProperty('--i', String(animar + k * 0.5));
+    caja.append(paleta);
+  });
+  fila.append(caja);
+  return fila;
+}
+
+// Las pistas pedidas, agrupadas por categoría en el orden del catálogo del servidor.
+// Mientras se juega van solo las reveladas; al terminar van todas, con las no usadas marcadas.
+function pistasPorCategoria(v) {
+  const grupos = new Map(v.disponibles.map((d) => [d.id, []]));
+  const guardar = (id, item) => {
+    if (!grupos.has(id)) grupos.set(id, []);
+    grupos.get(id).push(item);
+  };
+  if (v.estado === 'jugando') v.reveladas.forEach((r, i) => guardar(r.categoria, { ...r, orden: i }));
+  else for (const t of v.todas ?? []) guardar(t.categoria, { ...t, orden: null });
+  return [...grupos].filter(([, items]) => items.length);
+}
+
 function pintarFilas(v, previas) {
   const lista = $('#pistas');
   lista.replaceChildren();
 
-  const items = [
-    ...v.pistas.map((p, i) => ({ ...p, revelada: true, indice: i })),
-    ...v.pendientes.map((p) => ({ ...p, revelada: false })),
-  ];
+  // Las básicas están desde el arranque: no se dan vuelta.
+  for (const b of v.basicas) lista.append(filaDePista(b));
 
-  let anterior = null;
-  for (const item of items) {
-    if (item.tipo === 'club' && anterior && anterior.tipo !== 'club') {
-      const separador = crear('li', 'linea');
-      separador.setAttribute('role', 'presentation');
-      lista.append(separador);
+  let nuevas = 0;
+  for (const [categoria, items] of pistasPorCategoria(v)) {
+    const separador = crear('li', 'linea');
+    separador.setAttribute('role', 'presentation');
+    lista.append(separador);
+    for (const item of items) {
+      const recien = item.orden != null && item.orden >= previas;
+      lista.append(
+        filaDePista({
+          etiqueta: item.etiqueta,
+          valor: item.valor,
+          club: categoria === 'carrera',
+          sinUsar: item.usada === false,
+          animar: recien ? nuevas++ : null,
+        }),
+      );
     }
-    anterior = item;
-
-    const fila = crear('li', `fila${item.tipo === 'club' ? ' fila--club' : ''}`);
-    fila.append(crear('span', 'fila-etiqueta', item.etiqueta));
-    const valor = crear('div', 'valor');
-
-    if (item.revelada) {
-      const nueva = item.indice >= previas;
-      if (v.estado !== 'jugando' && item.indice >= v.pistasUsadas) fila.classList.add('fila--sin-usar');
-      item.valor.split(' ').forEach((palabra, k) => {
-        const paleta = crear('span', `paleta${nueva ? ' paleta--nueva' : ''}`, palabra);
-        if (nueva) paleta.style.setProperty('--i', String(item.indice - previas + k * 0.5));
-        valor.append(paleta);
-      });
-    } else {
-      const paleta = crear('span', 'paleta paleta--pendiente', '?');
-      paleta.setAttribute('aria-hidden', 'true');
-      valor.append(paleta, crear('span', 'sr', 'Pista sin abrir'));
-    }
-    fila.append(valor);
-    lista.append(fila);
   }
+}
+
+// La línea discreta de abajo: qué queda por pedir (sin decir qué dice cada pista).
+function pintarQuedan(v) {
+  const el = $('#quedan');
+  const libres = v.estado === 'jugando' ? v.disponibles.filter((d) => d.quedan > 0) : [];
+  if (v.estado !== 'jugando') {
+    el.hidden = true;
+    return;
+  }
+  el.textContent = libres.length
+    ? `Pistas disponibles: ${libres.map((d) => (d.quedan > 1 ? `${d.nombre} (${d.quedan})` : d.nombre)).join(', ')}.`
+    : 'Ya pediste todas las pistas. Arriesgá con lo que tenés.';
+  el.hidden = false;
 }
 
 // La nacionalidad se ve desde el principio, junto a la silueta (no es una pista que se abra).
@@ -157,24 +183,32 @@ function pintarPais(pais) {
   nombre.hidden = false;
 }
 
+const cuantasPistas = (n) => (n === 0 ? 'sin pistas' : n === 1 ? '1 pista' : `${n} pistas`);
+const contadorDePistas = (n) => (n === 0 ? 'Sin pistas pedidas' : n === 1 ? '1 pista pedida' : `${n} pistas pedidas`);
+
 function pintar(v) {
   const practica = v.modo === 'practica';
   const anterior = practica ? vistaPractica : vistaDiaria;
-  const previas = anterior && anterior.partida === v.partida ? anterior.pistas.length : 0;
+  const mismaPartida = Boolean(anterior) && anterior.partida === v.partida;
+  const previas = mismaPartida ? anterior.reveladas.length : 0;
   vista = v;
   if (practica) vistaPractica = v;
   else vistaDiaria = v;
   const terminada = v.estado !== 'jugando';
+  // Si recién ahora pasó de "jugando" a terminada (en esta misma sesión), la foto se anima.
+  // Si llega terminada desde el arranque (recargaste la página a mitad de la espera), aparece directo.
+  const reveladaRecien = terminada && mismaPartida && anterior.estado === 'jugando';
 
   $('#num').textContent = practica ? 'Práctica' : `Nº ${v.numero}`;
   $('#racha').textContent = !practica && v.racha > 0 ? `Racha ${v.racha}` : '';
   $('#practica-barra').hidden = !practica;
   if (practica) $('#practica-resumen').textContent = resumenPractica(v);
   $('#aviso-ejemplo').hidden = !v.ejemplo;
-  $('#contador').textContent = terminada ? 'Partida terminada' : `Pista ${v.pistasUsadas} de ${v.totalPistas}`;
+  $('#contador').textContent = terminada ? 'Partida terminada' : contadorDePistas(v.pedidas);
   pintarPais(v.pais);
 
   pintarFilas(v, previas);
+  pintarQuedan(v);
 
   // Descartados e intentos que quedan
   const fallos = $('#fallos');
@@ -190,22 +224,65 @@ function pintar(v) {
   // Controles
   $('#form').hidden = terminada;
   $('#acciones').hidden = terminada;
-  const sinMasPistas = v.pistasUsadas >= v.totalPistas;
-  $('#pedir').disabled = sinMasPistas;
+  $('#pedir').disabled = !quedanPistas(v);
   const valor = $('#valor');
   if (!terminada) {
     valor.replaceChildren('Si acertás ahora: ', crear('strong', null, `${v.puntajeActual} puntos`));
-    if (sinMasPistas) valor.append(' · Ya están todas las pistas.');
+    if (!quedanPistas(v)) valor.append(' · No quedan pistas por pedir.');
   }
+  if (terminada) cerrarModal();
+  else if ($('#modal').open) pintarModal(v);
 
-  pintarFinal(v);
+  pintarFinal(v, reveladaRecien);
   pintarApodos();
 }
 
-function pintarFinal(v) {
+// Reemplaza la silueta del encabezado por la foto del resultado (ganado o perdido), con un fundido.
+// Mientras se juega, o si el jugador no tiene foto, queda la silueta de siempre.
+function revelarFoto(v, animar) {
+  const foto = $('#foto-jugador');
+  const silueta = $('#silueta');
+  const terminada = v.estado !== 'jugando';
+
+  if (!terminada || !v.resultado?.foto) {
+    foto.hidden = true;
+    foto.classList.remove('foto-jugador--visible');
+    foto.removeAttribute('src');
+    silueta.classList.remove('silueta--grande');
+    return;
+  }
+
+  const yaEsta = foto.src === v.resultado.foto && !foto.hidden;
+  if (yaEsta) return; // ya se estaba mostrando esta misma foto: no reiniciar el fundido
+
+  const mostrar = () => {
+    foto.hidden = false;
+    silueta.classList.add('silueta--grande');
+    if (animar) {
+      // Dos vueltas de rAF: así el navegador llega a pintar el estado "oculta" antes de animar.
+      requestAnimationFrame(() => requestAnimationFrame(() => foto.classList.add('foto-jugador--visible')));
+    } else {
+      foto.classList.add('foto-jugador--visible'); // sin pasos intermedios: aparece directo
+    }
+  };
+
+  foto.alt = v.resultado.nombre;
+  foto.referrerPolicy = 'no-referrer';
+  foto.classList.remove('foto-jugador--visible');
+  foto.onload = mostrar;
+  foto.onerror = () => {
+    foto.hidden = true;
+    foto.classList.remove('foto-jugador--visible');
+    silueta.classList.remove('silueta--grande'); // si no carga, queda la silueta
+  };
+  foto.src = v.resultado.foto;
+}
+
+function pintarFinal(v, animar) {
   const final = $('#final');
   const terminada = v.estado !== 'jugando';
   final.hidden = !terminada;
+  revelarFoto(v, animar);
   if (!terminada) {
     clearInterval(reloj);
     return;
@@ -224,32 +301,25 @@ function pintarFinal(v) {
   const detalle = $('#final-detalle');
   detalle.replaceChildren();
   if (gano) {
-    detalle.append(`Lo sacaste con ${v.pistasUsadas} de ${v.totalPistas} pistas: `, crear('strong', null, `${v.puntaje} puntos`), '.');
+    const con = v.pedidas === 0 ? 'sin pedir una sola pista' : v.pedidas === 1 ? 'con 1 pista' : `con ${v.pedidas} pistas`;
+    detalle.append(`Lo sacaste ${con}: `, crear('strong', null, `${v.puntaje} puntos`), '.');
   } else {
     detalle.append(`Gastaste los ${v.intentosMax} intentos y no salió. Mañana hay otro jugador.`);
   }
 
-  const foto = $('#final-foto');
-  foto.innerHTML = SILUETA;
   const credito = $('#final-credito');
-  credito.hidden = true;
-  if (v.resultado.foto) {
-    const img = new Image();
-    img.alt = v.resultado.nombre;
-    img.referrerPolicy = 'no-referrer';
-    img.onload = () => {
-      foto.replaceChildren(img);
-      if (v.resultado.fotoPagina) {
-        const enlace = crear('a', null, 'Wikimedia Commons');
-        enlace.href = v.resultado.fotoPagina;
-        enlace.target = '_blank';
-        enlace.rel = 'noopener noreferrer';
-        credito.replaceChildren('Foto: ', enlace);
-        credito.hidden = false;
-      }
-    };
-    img.src = v.resultado.foto; // si no carga, queda la silueta
+  if (v.resultado.fotoPagina) {
+    const enlace = crear('a', null, 'Wikimedia Commons');
+    enlace.href = v.resultado.fotoPagina;
+    enlace.target = '_blank';
+    enlace.rel = 'noopener noreferrer';
+    credito.replaceChildren('Foto: ', enlace);
+    credito.hidden = false;
+  } else {
+    credito.hidden = true;
   }
+
+  revelarFoto(v, animar);
 
   clearInterval(reloj);
   if (practica) return;
@@ -397,9 +467,11 @@ function configurarCampo() {
 
 // ───────────── Jugar ─────────────
 
+const quedanPistas = (v) => Boolean(v && v.estado === 'jugando' && v.disponibles.some((d) => d.quedan > 0));
+
 function ocupado(si) {
   $('#arriesgar').disabled = si;
-  $('#pedir').disabled = si || (vista && vista.pistasUsadas >= vista.totalPistas);
+  $('#pedir').disabled = si || !quedanPistas(vista);
 }
 
 async function arriesgar(evento) {
@@ -435,12 +507,78 @@ async function arriesgar(evento) {
   }
 }
 
-async function pedirPista() {
+// ───────────── Modal de pistas ─────────────
+
+let abrioElModal = null; // a quién le devolvemos el foco al cerrar
+
+function pintarModal(v) {
+  $('#modal-ayuda').replaceChildren(
+    'Cada pista baja ',
+    crear('strong', null, `${v.costoPista} puntos`),
+    '. Si acertás después: ',
+    crear('strong', null, `${v.puntajeSiguiente} puntos`),
+    '.',
+  );
+
+  $('#modal-categorias').replaceChildren(
+    ...v.disponibles.map((d) => {
+      const li = crear('li');
+      const boton = crear('button', 'categoria');
+      boton.type = 'button';
+      boton.disabled = d.quedan === 0;
+      boton.append(
+        crear('span', 'categoria-nombre', d.nombre),
+        crear('span', 'categoria-costo', d.quedan === 0 ? 'Agotada' : `−${v.costoPista} puntos`),
+        crear(
+          'span',
+          'categoria-detalle',
+          d.quedan === 0 ? 'Ya pediste todas las de esta categoría' : d.quedan === 1 ? 'Queda 1 pista' : `Quedan ${d.quedan} pistas`,
+        ),
+      );
+      boton.addEventListener('click', () => pedirPista(d.id));
+      li.append(boton);
+      return li;
+    }),
+  );
+}
+
+function abrirModal() {
+  if (!quedanPistas(vista)) return;
+  abrioElModal = document.activeElement;
+  pintarModal(vista);
+  const modal = $('#modal');
+  modal.showModal();
+  (modal.querySelector('.categoria:not(:disabled)') ?? $('#modal-cerrar')).focus();
+}
+
+function cerrarModal() {
+  const modal = $('#modal');
+  if (modal.open) modal.close();
+}
+
+function configurarModal() {
+  const modal = $('#modal');
+  $('#modal-cerrar').addEventListener('click', cerrarModal);
+  // Un clic en el fondo oscuro le llega al <dialog>, no a su contenido.
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) cerrarModal();
+  });
+  // Esc y el botón ya cierran solos: acá solo se devuelve el foco.
+  modal.addEventListener('close', () => {
+    const volver = abrioElModal?.isConnected && !abrioElModal.disabled ? abrioElModal : $('#q');
+    abrioElModal = null;
+    if (vista?.estado === 'jugando') volver.focus();
+  });
+}
+
+async function pedirPista(categoria) {
   if (!vista || vista.estado !== 'jugando') return;
+  cerrarModal();
   ocupado(true);
   try {
     const practica = vista.modo === 'practica';
-    pintar(await api(practica ? '/api/practica/pista' : '/api/pista', practica ? { partida: vista.partida } : {}));
+    const cuerpo = practica ? { partida: vista.partida, categoria } : { categoria };
+    pintar(await api(practica ? '/api/practica/pista' : '/api/pista', cuerpo));
     mensaje('');
   } catch (error) {
     mensaje(error.message, true);
@@ -454,12 +592,20 @@ async function pedirPista() {
 function textoParaCompartir(v) {
   const gano = v.estado === 'ganado';
   const errores = v.intentos.length;
-  const pistas = '🟨'.repeat(v.pistasUsadas) + '⬜'.repeat(v.totalPistas - v.pistasUsadas);
-  const intentos = '🟥'.repeat(errores) + (gano ? '🟩' : '') + '⬜'.repeat(Math.max(0, v.intentosMax - errores - (gano ? 1 : 0)));
   const resultado = gano
-    ? `${v.pistasUsadas}/${v.totalPistas} pistas · ${errores === 0 ? 'sin errores' : errores === 1 ? '1 error' : `${errores} errores`}`
+    ? [
+        cuantasPistas(v.pedidas),
+        errores === 0 ? 'sin errores' : errores === 1 ? '1 error' : `${errores} errores`,
+        `${v.puntaje} puntos`,
+      ].join(' · ')
     : 'No salió';
-  return `${NOMBRE} Nº${v.numero}\n${resultado}\nPistas ${pistas}\nIntentos ${intentos}\n${location.origin}`;
+  const lineas = [`${NOMBRE} Nº${v.numero}`, resultado];
+  if (v.pedidas > 0) lineas.push(`Pistas ${'🟨'.repeat(v.pedidas)}`);
+  lineas.push(
+    `Intentos ${'🟥'.repeat(errores)}${gano ? '🟩' : ''}${'⬜'.repeat(Math.max(0, v.intentosMax - errores - (gano ? 1 : 0)))}`,
+  );
+  lineas.push(location.origin);
+  return lineas.join('\n');
 }
 
 async function copiar(texto) {
@@ -552,7 +698,9 @@ async function cargarRanking() {
         const nombre = crear('span', 'puesto-apodo', f.apodo);
         const detalle =
           d.tipo === 'dia'
-            ? f.estado === 'ganado' ? `${f.pistas} ${f.pistas === 1 ? 'pista' : 'pistas'}` : 'no salió'
+            ? f.estado === 'ganado'
+              ? f.pistas === 0 ? 'sin pistas' : `${f.pistas} ${f.pistas === 1 ? 'pista pedida' : 'pistas pedidas'}`
+              : 'no salió'
             : `${f.ganados} de ${f.dias} ${f.dias === 1 ? 'día' : 'días'}`;
         nombre.append(crear('small', null, f.yo ? `Vos · ${detalle}` : detalle));
         li.append(crear('span', 'puesto-n', String(f.puesto)), nombre, crear('span', 'puesto-puntos', String(f.puntaje)));
@@ -576,7 +724,8 @@ async function cargarRanking() {
 const nombreDe = (lista, id) => lista?.find((x) => x.id === id)?.nombre ?? id;
 
 function resumenPractica(v) {
-  return `${nombreDe(opcionesPractica?.grupos, v.grupo)} · ${nombreDe(opcionesPractica?.dificultades, v.dificultad)}`;
+  const base = `${nombreDe(opcionesPractica?.grupos, v.grupo)} · ${nombreDe(opcionesPractica?.dificultades, v.dificultad)}`;
+  return v.argentina ? `${base} · Pasaron por Argentina` : base;
 }
 
 function pintarOpcionesPractica() {
@@ -615,11 +764,14 @@ function pintarOpcionesPractica() {
   );
   $('#dificultad-detalle').textContent =
     opcionesPractica.dificultades.find((d) => d.id === eleccion.dificultad)?.detalle ?? '';
+  $('#practica-argentina').checked = eleccion.argentina;
 }
 
+// Los contadores de cada grupo dependen del checkbox: hay que volver a pedirlos cuando cambia.
 async function cargarPractica() {
   try {
-    const d = await api('/api/practica/estado');
+    const ruta = `/api/practica/estado${eleccion.argentina ? '?argentina=1' : ''}`;
+    const d = await api(ruta);
     opcionesPractica = { grupos: d.grupos, dificultades: d.dificultades };
     if (!opcionesPractica.grupos.some((g) => g.id === eleccion.grupo && g.cantidad > 0)) eleccion.grupo = 'todos';
     if (!opcionesPractica.dificultades.some((x) => x.id === eleccion.dificultad)) eleccion.dificultad = 'todas';
@@ -636,7 +788,7 @@ async function empezarPractica() {
   const boton = $('#practica-jugar');
   boton.disabled = true;
   try {
-    const v = await api('/api/practica/nueva', { grupo: eleccion.grupo, dificultad: eleccion.dificultad });
+    const v = await api('/api/practica/nueva', { grupo: eleccion.grupo, dificultad: eleccion.dificultad, argentina: eleccion.argentina });
     vistaPractica = null; // es otra partida: las pistas aparecen con el giro
     mostrar('juego', 'practica');
     limpiarCampo();
@@ -693,8 +845,9 @@ async function abrirPractica() {
 
 async function iniciar() {
   configurarCampo();
+  configurarModal();
   $('#form').addEventListener('submit', arriesgar);
-  $('#pedir').addEventListener('click', pedirPista);
+  $('#pedir').addEventListener('click', abrirModal);
   $('#pestana-juego').addEventListener('click', () => mostrar('juego'));
   $('#pestana-practica').addEventListener('click', abrirPractica);
   $('#pestana-ranking').addEventListener('click', () => mostrar('ranking'));
@@ -703,8 +856,13 @@ async function iniciar() {
   $('#practica-filtros').addEventListener('click', () => mostrar('practica'));
   $('#practica-otro').addEventListener('click', async () => {
     if (!vistaPractica) return;
-    eleccion = { grupo: vistaPractica.grupo, dificultad: vistaPractica.dificultad };
+    eleccion = { grupo: vistaPractica.grupo, dificultad: vistaPractica.dificultad, argentina: Boolean(vistaPractica.argentina) };
     await empezarPractica();
+  });
+  $('#practica-argentina').addEventListener('change', (e) => {
+    eleccion.argentina = e.target.checked;
+    guardarEleccion();
+    cargarPractica();
   });
   $('#ver-ranking').addEventListener('click', () => mostrar('ranking'));
   $('#compartir').addEventListener('click', async () => {
