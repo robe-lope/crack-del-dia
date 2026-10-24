@@ -1,7 +1,14 @@
 // Crack del Día: pantalla del juego diario.
 // El servidor decide todo (qué pistas se ven, si acertaste, cuántos puntos). Acá solo se dibuja y se escribe.
 
-import { NOMBRE_JUEGO as NOMBRE, datosParaCompartir, textoParaCompartir } from './compartir.js';
+import {
+  NOMBRE_JUEGO as NOMBRE,
+  TARJETA_ALTO,
+  TARJETA_ANCHO,
+  datosParaCompartir,
+  dibujarTarjeta,
+  textoParaCompartir,
+} from './compartir.js';
 
 const $ = (selector, dentro = document) => dentro.querySelector(selector);
 
@@ -292,6 +299,7 @@ function pintarFinal(v, animar) {
 
   const practica = v.modo === 'practica';
   $('#compartir').hidden = practica;
+  $('#compartir-imagen').hidden = practica;
   $('#ver-ranking').hidden = practica;
   $('#proximo').hidden = practica;
   $('#practica-otro').hidden = !practica;
@@ -639,6 +647,50 @@ async function compartirTexto() {
   mensaje(ok ? 'Copiado. Pegalo donde quieras.' : 'No pudimos copiarlo. Seleccioná y copiá el texto a mano.', !ok);
 }
 
+// La tarjeta para stories, dibujada en un <canvas> fuera de la página (no hace falta que esté en el
+// DOM para generar la imagen). Si se puede compartir el archivo, se abre el menú nativo (desde ahí
+// se elige Instagram); si no, se descarga el PNG y la persona lo sube a mano.
+async function compartirImagen() {
+  if (!vistaDiaria) return;
+  const boton = $('#compartir-imagen');
+  boton.disabled = true;
+  try {
+    const datos = datosParaCompartir(vistaDiaria);
+    const canvas = document.createElement('canvas');
+    canvas.width = TARJETA_ANCHO;
+    canvas.height = TARJETA_ALTO;
+    if (document.fonts?.ready) await document.fonts.ready; // si no, puede dibujar con la fuente de respaldo
+    dibujarTarjeta(canvas.getContext('2d'), datos, location.origin);
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('No pudimos generar la imagen.');
+    const archivo = new File([blob], 'crack-del-dia.png', { type: 'image/png' });
+
+    if (navigator.canShare?.({ files: [archivo] })) {
+      try {
+        await navigator.share({ files: [archivo], text: textoParaCompartir(datos, location.origin) });
+        return;
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+        // si falla por otro motivo, se sigue a la descarga
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const enlace = crear('a');
+    enlace.href = url;
+    enlace.download = 'crack-del-dia.png';
+    document.body.append(enlace);
+    enlace.click();
+    enlace.remove();
+    URL.revokeObjectURL(url);
+    mensaje('Imagen descargada. Abrí Instagram y subila a tu story.');
+  } catch (error) {
+    mensaje(error.message || 'No pudimos generar la imagen.', true);
+  } finally {
+    boton.disabled = false;
+  }
+}
+
 // ───────────── Apodo ─────────────
 
 function formularioApodo(valorInicial = '') {
@@ -876,6 +928,7 @@ async function iniciar() {
   });
   $('#ver-ranking').addEventListener('click', () => mostrar('ranking'));
   $('#compartir').addEventListener('click', compartirTexto);
+  $('#compartir-imagen').addEventListener('click', compartirImagen);
   for (const boton of document.querySelectorAll('.subpestana')) {
     boton.addEventListener('click', () => {
       tipoRanking = boton.dataset.tipo;

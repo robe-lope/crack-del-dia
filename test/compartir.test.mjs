@@ -2,7 +2,7 @@
 // dibujo en canvas (lib/compartir.js -> dibujarTarjeta) no se testea acá, necesita DOM.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { datosParaCompartir, formatearFecha, textoParaCompartir } from '../public/compartir.js';
+import { TARJETA_ALTO, TARJETA_ANCHO, datosParaCompartir, formatearFecha, textoParaCompartir } from '../public/compartir.js';
 
 const VISTA_GANADA = {
   numero: 7,
@@ -101,4 +101,11 @@ test('el objeto de datosParaCompartir nunca trae el nombre/foto del jugador del 
   assert.ok(!plano.includes('Di María'));
   assert.ok(!plano.includes('foto'));
   assert.ok(!plano.includes('Messi'), 'ni los nombres de los intentos fallidos');
+});
+
+// Tamaño de story de Instagram. dibujarTarjeta no se testea acá (necesita un <canvas> real), pero
+// usa estas mismas constantes para el tamaño del lienzo.
+test('la tarjeta para stories mide 1080×1920', () => {
+  assert.equal(TARJETA_ANCHO, 1080);
+  assert.equal(TARJETA_ALTO, 1920);
 });

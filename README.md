@@ -146,6 +146,17 @@ lo pasa a `navigator.share({ text, url })` si el navegador lo tiene (la mayoría
 no (navegadores de escritorio), lo copia al portapapeles y avisa "Copiado". Si la persona cierra el
 menú de compartir sin elegir nada, no se muestra ningún error.
 
+**Botón "Compartir imagen"**: dibuja una tarjeta vertical de 1080×1920 (tamaño de story) en un
+`<canvas>`, con los colores y la tipografía de `styles.css` (sin fuentes nuevas) y un margen seguro
+de ~250 px arriba y abajo, porque ahí la interfaz de Instagram tapa la imagen. El contenido es el
+mismo resumen que el texto (número, fecha, pistas e intentos dibujados como cuadraditos de color —
+no emoji, para no depender de que la fuente los tenga —, resultado, puntaje, racha y la URL), nunca
+nada del jugador. `canvas.toBlob` arma un PNG; si `navigator.canShare({ files })` da `true`, abre el
+menú nativo con la imagen (`navigator.share({ files, text })`); si no, descarga el PNG. **Desde la
+web no se puede publicar directo a un story**: se abre el menú para compartir/guardar y la persona
+elige Instagram (o guarda la imagen y la sube a mano) — es una limitación de los navegadores, no del
+juego.
+
 **Open Graph / Twitter card** (`public/plantilla.html`, con `{{SITE_URL}}` sin resolver): para que
 `og:image` sea una URL absoluta (como pide el estándar) hace falta conocer el dominio del sitio al
 momento de servir la página, y eso no se puede hacer desde un archivo estático. La solución más
