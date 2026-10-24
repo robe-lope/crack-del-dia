@@ -12,5 +12,8 @@
   },
   "dependencies": {
     "@libsql/client": "^0.18.0"
+  },
+  "devDependencies": {
+    "node-html-parser": "^9.0.5"
   }
 }
