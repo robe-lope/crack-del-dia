@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parse } from 'node-html-parser';
 import { test } from 'node:test';
-import { esSeleccion, extraerPalmares, fraseCampeon, nombreDeSeleccion, normalizarFilas } from '../lib/palmares.js';
+import { MAX_ITEMS, esSeleccion, extraerPalmares, fraseCampeon, nombreDeSeleccion, normalizarFilas } from '../lib/palmares.js';
 
 const fixture = (nombre) => readFileSync(new URL(`fixtures/palmares/${nombre}.html`, import.meta.url), 'utf8');
 
@@ -25,43 +25,51 @@ test('Ubaldo Fillol: el Mundial 78 aparece como selección, y Metropolitano/Naci
   ]);
 });
 
-test('Diego Maradona: selección (absoluta y sub-20) primero, después clubes, con tope de 10', () => {
+test('Diego Maradona: selección (absoluta y sub-20) primero, con tope de 12 y sin perder sus Balón de Oro', () => {
   const items = extraerPalmares(fixture('maradona'));
-  assert.equal(items.length, 10);
+  assert.equal(items.length, 12);
   assert.equal(items[0], 'Campeón del Mundo con Argentina (1986)');
   assert.ok(items.slice(0, 3).includes('Campeón del Mundo Sub-20 con Argentina (1979)'));
-  assert.ok(items.some((i) => i.startsWith('Serie A con SSC Napoli')));
-  // Las distinciones individuales (goleador, Balón de Oro juvenil...) quedan afuera: ya se llenaron
-  // los 10 con selección y clubes, y las individuales van últimas en la prioridad.
-  assert.ok(!items.some((i) => i.includes('goleador')));
+  assert.ok(items.some((i) => i.startsWith('Copa de la UEFA con SSC Napoli')));
+  // Los Balón/Bota de Oro no se pierden entre los títulos de club, aunque una lista tan larga como la
+  // de Maradona igual deja afuera distinciones menores (máximo goleador de un campeonato local, etc.).
+  assert.ok(items.some((i) => i.startsWith('Balón de Oro de la Copa Mundial de Fútbol (')));
+  assert.ok(!items.some((i) => i.startsWith('Máximo goleador del')));
 });
 
 test('Lionel Messi: dos Copa América (2021 y 2024) se agrupan aunque una fila no tenga wikilink', () => {
   const items = extraerPalmares(fixture('messi'));
-  assert.equal(items[0], 'Campeón de América con Argentina (2021, 2024)');
+  assert.equal(items[0], 'Campeón de la Copa América con Argentina (2021, 2024)');
   assert.equal(items[2], 'Campeón del Mundo con Argentina (2022)');
   assert.ok(!items.some((i) => i.includes('Selección de Argentina')), 'el nombre del equipo se limpia a "Argentina"');
+  // Con 8 Balones de Oro, a Messi no se le pueden perder entre los títulos de club.
+  assert.ok(items.some((i) => i.startsWith('Balón de Oro (')), 'el Balón de Oro "de siempre" sobrevive al tope');
 });
 
-test('Ángel Di María: también campeón del mundo 2022 (el caso que faltaba en Wikidata)', () => {
+test('Ángel Di María: también campeón del mundo 2022 (el caso que faltaba en Wikidata) y la Finalissima', () => {
   const items = extraerPalmares(fixture('dimaria'));
   assert.ok(items.includes('Campeón del Mundo con Argentina (2022)'));
-  assert.ok(items.includes('Campeón de América con Argentina (2021, 2024)'));
+  assert.ok(items.includes('Campeón de la Copa América con Argentina (2021, 2024)'));
+  assert.ok(items.includes('Campeón de la Finalissima con Argentina (2022)'));
 });
 
-test('Roberto Carlos: campeón del mundo 2002 y de América, con las ediciones sub-20/olímpica separadas', () => {
+test('Roberto Carlos: campeón del mundo 2002 y de América, con artículo correcto en sub-20/preolímpico', () => {
   const items = extraerPalmares(fixture('robertocarlos'));
   assert.ok(items.includes('Campeón del Mundo con Brasil (2002)'));
-  assert.equal(items[0], 'Campeón de América con Brasil (1997, 1999)');
-  const iSub20 = items.findIndex((i) => i.includes('Sub-20'));
+  assert.equal(items[0], 'Campeón de la Copa América con Brasil (1997, 1999)');
+  assert.ok(items.includes('Campeón del Sudamericano Sub-20 con Brasil (1991)'), '"del", no "de la Sudamericano"');
+  assert.ok(items.includes('Campeón del Preolímpico Sudamericano con Brasil (1996)'));
+  const iSub20 = items.findIndex((i) => i.includes('Sudamericano Sub-20'));
   const iClub = items.findIndex((i) => i.includes('Real Madrid'));
   assert.ok(iSub20 >= 0 && iClub >= 0 && iSub20 < iClub, 'selección va antes que los clubes');
 });
 
-test('Garrincha: campeón del mundo 1958 y 1962 agrupados en un solo ítem', () => {
+test('Garrincha: campeón del mundo 1958 y 1962 agrupados en un solo ítem, con la Bota de Oro antes que los clubes', () => {
   const items = extraerPalmares(fixture('garrincha'));
   assert.equal(items[0], 'Campeón del Mundo con Brasil (1958, 1962)');
-  assert.ok(items.some((i) => i.startsWith('Campeonato Carioca con Botafogo')));
+  const iBota = items.findIndex((i) => i.startsWith('Bota de Oro'));
+  const iClub = items.findIndex((i) => i.startsWith('Campeonato Carioca con Botafogo'));
+  assert.ok(iBota >= 0 && iClub >= 0 && iBota < iClub);
 });
 
 // ───────────── Casos generales ─────────────
@@ -84,7 +92,7 @@ test('una tabla sin las columnas esperadas se descarta en vez de romper', () => 
   assert.deepEqual(extraerPalmares(html), []);
 });
 
-test('nunca devuelve más de MAX_ITEMS (10), incluso con muchísimos títulos', () => {
+test('nunca devuelve más de MAX_ITEMS (12), incluso con muchísimos títulos', () => {
   const filas = Array.from(
     { length: 15 },
     (_, i) => `<tr><td>Título ${i}</td><td>Club ${i}</td><td>País</td><td>${2000 + i}</td></tr>`,
@@ -98,7 +106,52 @@ test('nunca devuelve más de MAX_ITEMS (10), incluso con muchísimos títulos', 
         </tbody></table>
       </section>
     </section>`;
-  assert.equal(extraerPalmares(html).length, 10);
+  assert.equal(MAX_ITEMS, 12);
+  assert.equal(extraerPalmares(html).length, 12);
+});
+
+// Un distintivo de inferiores de un club no es un logro futbolístico: no debería aparecer.
+test('descarta ítems poco informativos como "Título de Glorias de ..."', () => {
+  const html = `<!doctype html><title>x</title>
+    <section><h2 id="Palmarés">Palmarés</h2>
+      <section><h3>Distinciones individuales</h3>
+        <table><tbody>
+          <tr><th>Distinción</th><th>Año</th></tr>
+          <tr><td>Título de Glorias de Instituto de Córdoba</td><td>1998</td></tr>
+          <tr><td>Balón de Oro</td><td>2015</td></tr>
+        </tbody></table>
+      </section>
+    </section>`;
+  assert.deepEqual(extraerPalmares(html), ['Balón de Oro (2015)']);
+});
+
+// Con un jugador que tiene muchísimos títulos de club, el Balón de Oro no se tiene que quedar afuera
+// por el tope: los premios individuales más importantes van antes que los títulos de club.
+test('a un jugador con muchos títulos de club no se le pierde el Balón de Oro', () => {
+  const titulosDeClub = Array.from(
+    { length: 11 },
+    (_, i) => `<tr><td>Liga ${i}</td><td>Club Grande</td><td>País</td><td>${2000 + i}</td></tr>`,
+  ).join('');
+  const html = `<!doctype html><title>x</title>
+    <section><h2 id="Palmarés">Palmarés</h2>
+      <section><h3>Campeonatos nacionales</h3>
+        <table><tbody>
+          <tr><th>Título</th><th>Club</th><th>País</th><th>Año</th></tr>
+          ${titulosDeClub}
+        </tbody></table>
+      </section>
+      <section><h3>Distinciones individuales</h3>
+        <table><tbody>
+          <tr><th>Distinción</th><th>Año</th></tr>
+          <tr><td>Balón de Oro</td><td>2015</td></tr>
+          <tr><td>Máximo goleador de la liga</td><td>2016</td></tr>
+        </tbody></table>
+      </section>
+    </section>`;
+  const items = extraerPalmares(html);
+  assert.equal(items.length, 12);
+  assert.ok(items.includes('Balón de Oro (2015)'));
+  assert.ok(!items.includes('Máximo goleador de la liga (2016)'), 'esta distinción menor sí se puede perder');
 });
 
 // ───────────── normalizarFilas: rowspan y colspan ─────────────
@@ -189,12 +242,17 @@ test('fraseCampeon reconoce los torneos de selección más comunes', () => {
   assert.equal(fraseCampeon('Copa Mundial de la FIFA'), 'Campeón del Mundo');
   assert.equal(fraseCampeon('Copa Mundial de Fútbol'), 'Campeón del Mundo');
   assert.equal(fraseCampeon('Copa Mundial Sub-20'), 'Campeón del Mundo Sub-20');
-  assert.equal(fraseCampeon('Copa América'), 'Campeón de América');
+  assert.equal(fraseCampeon('Copa América'), 'Campeón de la Copa América');
   assert.equal(fraseCampeon('Juegos Olímpicos de Pekín'), 'Campeón Olímpico');
+  assert.equal(fraseCampeon('Copa de Campeones Conmebol-UEFA'), 'Campeón de la Finalissima');
 });
 
-test('fraseCampeon cae a una frase genérica para un torneo que no está en la lista', () => {
+test('fraseCampeon cae a una frase genérica, con el artículo correcto según el nombre del torneo', () => {
+  // "Copa X" es femenino: "de la Copa X".
   assert.equal(fraseCampeon('Copa Artemio Franchi'), 'Campeón de la Copa Artemio Franchi');
+  // Un torneo nombrado solo (sin "Copa"/"Torneo" adelante) es masculino: "del X".
+  assert.equal(fraseCampeon('Sudamericano Sub-20'), 'Campeón del Sudamericano Sub-20');
+  assert.equal(fraseCampeon('Preolímpico Sudamericano'), 'Campeón del Preolímpico Sudamericano');
 });
 
 // Regresión: Wikipedia numera a mano los títulos repetidos del mismo tipo ("Ligue 1", "Ligue 1 (2)",
