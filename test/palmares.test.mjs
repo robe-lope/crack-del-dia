@@ -157,6 +157,20 @@ test('esSeleccion también reconoce una celda sin wikilink, por el texto', () =>
   assert.equal(esSeleccion({ texto: 'River Plate', enlace: null }), false);
 });
 
+// Regresión: en la página real, antes del wikilink a la selección va el de la banderita
+// (<a href="./Archivo:Flag_of_Argentina...">), porque el ícono de la bandera también es un enlace.
+// normalizarFilas tiene que saltarlo y quedarse con el enlace de contenido.
+test('normalizarFilas no confunde el enlace de la banderita con el de la selección', () => {
+  const html = `<table><tbody><tr><td>
+      <span class="flagicon"><a href="./Archivo:Flag_of_Argentina.svg" title="Bandera de Argentina"><img/></a></span>
+      <a href="./Selección_de_fútbol_de_Argentina" title="Selección de fútbol de Argentina">Argentina</a>
+    </td></tr></tbody></table>`;
+  const celda = normalizarFilas(parse(html).querySelector('table'))[0][0];
+  assert.equal(celda.enlace.href, './Selección_de_fútbol_de_Argentina');
+  assert.equal(esSeleccion(celda), true);
+  assert.equal(nombreDeSeleccion(celda), 'Argentina');
+});
+
 test('nombreDeSeleccion saca el país del título del enlace, con o sin sub-categoría', () => {
   assert.equal(
     nombreDeSeleccion({ texto: 'Argentina', enlace: { title: 'Selección de fútbol de Argentina' } }),
