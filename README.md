@@ -138,8 +138,10 @@ cantidad de pistas pedidas) porque el ranking y el historial la siguen leyendo.
 ## Compartir
 
 Solo el modo diario (la práctica no tiene botón de compartir). Lo arma `public/compartir.js`
-(funciones puras, testeadas en `test/compartir.test.mjs`): **nunca** incluye el nombre, la foto, el
-club ni la nacionalidad del jugador del día, ni siquiera habiendo ganado.
+(funciones puras, testeadas en `test/compartir.test.mjs`): **nunca** incluye el nombre, la foto real
+ni el club del jugador del día, ni siquiera habiendo ganado. La tarjeta para stories es la única
+excepción parcial: muestra la silueta genérica y la bandera del país, pero son los mismos datos que
+la pantalla ya muestra desde que arranca la partida, no algo nuevo que se revele al compartir.
 
 **Botón "Compartir"**: arma el texto (`Nº`, resultado, pistas y intentos en emoji, puntaje y racha) y
 lo pasa a `navigator.share({ text, url })` si el navegador lo tiene (la mayoría de los celulares); si
@@ -150,12 +152,19 @@ menú de compartir sin elegir nada, no se muestra ningún error.
 `<canvas>`, con los colores y la tipografía de `styles.css` (sin fuentes nuevas) y un margen seguro
 de ~250 px arriba y abajo, porque ahí la interfaz de Instagram tapa la imagen. El contenido es el
 mismo resumen que el texto (número, fecha, pistas e intentos dibujados como cuadraditos de color —
-no emoji, para no depender de que la fuente los tenga —, resultado, puntaje, racha y la URL), nunca
-nada del jugador. `canvas.toBlob` arma un PNG; si `navigator.canShare({ files })` da `true`, abre el
-menú nativo con la imagen (`navigator.share({ files, text })`); si no, descarga el PNG. **Desde la
-web no se puede publicar directo a un story**: se abre el menú para compartir/guardar y la persona
-elige Instagram (o guarda la imagen y la sube a mano) — es una limitación de los navegadores, no del
-juego.
+no emoji, para no depender de que la fuente los tenga —, resultado, puntaje, racha y la URL), más la
+silueta del día con la bandera del país (los mismos datos que ya se ven jugando, nada nuevo) —
+nunca el nombre, la foto real ni el club. `canvas.toBlob` arma un PNG; si `navigator.canShare({
+files })` da `true`, abre el menú nativo con la imagen (`navigator.share({ files, text })`); si no,
+descarga el PNG. **Desde la web no se puede publicar directo a un story**: se abre el menú para
+compartir/guardar y la persona elige Instagram (o guarda la imagen y la sube a mano) — es una
+limitación de los navegadores, no del juego.
+
+Fondo opcional de la tarjeta: si existe `public/story-fondo.jpg`, se usa de fondo (recortado al
+centro, sin deformar, con una capa oscura encima para que el texto se lea); si no existe o no carga
+a tiempo, se usa el degradé de siempre sin mostrar ningún error. Es un archivo opcional, no se
+versiona con datos de jugadores: se recomienda 1080×1920 y que no tenga caras ni nada que identifique
+al jugador del día (la imagen es la misma todos los días, cualquiera sea el jugador).
 
 **Open Graph / Twitter card** (`public/plantilla.html`, con `{{SITE_URL}}` sin resolver): para que
 `og:image` sea una URL absoluta (como pide el estándar) hace falta conocer el dominio del sitio al
