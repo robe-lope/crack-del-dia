@@ -233,6 +233,7 @@ function pintar(v) {
   // Controles
   $('#form').hidden = terminada;
   $('#acciones').hidden = terminada;
+  $('#pedir').hidden = terminada;
   $('#pedir').disabled = !quedanPistas(v);
   const valor = $('#valor');
   if (!terminada) {
@@ -647,6 +648,24 @@ async function compartirTexto() {
   mensaje(ok ? 'Copiado. Pegalo donde quieras.' : 'No pudimos copiarlo. Seleccioná y copiá el texto a mano.', !ok);
 }
 
+// Carga una imagen del mismo origen con un tope de tiempo; si no llega o falla, se sigue sin ella
+// (la tarjeta se arma igual, ver dibujarTarjeta).
+function cargarImagenConTope(src, timeoutMs = 3000) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    let listo = false;
+    const terminar = (resultado) => {
+      if (listo) return;
+      listo = true;
+      resolve(resultado);
+    };
+    img.onload = () => terminar(img);
+    img.onerror = () => terminar(null);
+    setTimeout(() => terminar(null), timeoutMs);
+    img.src = src;
+  });
+}
+
 // La tarjeta para stories, dibujada en un <canvas> fuera de la página (no hace falta que esté en el
 // DOM para generar la imagen). Si se puede compartir el archivo, se abre el menú nativo (desde ahí
 // se elige Instagram); si no, se descarga el PNG y la persona lo sube a mano.
@@ -660,7 +679,13 @@ async function compartirImagen() {
     canvas.width = TARJETA_ANCHO;
     canvas.height = TARJETA_ALTO;
     if (document.fonts?.ready) await document.fonts.ready; // si no, puede dibujar con la fuente de respaldo
-    dibujarTarjeta(canvas.getContext('2d'), datos, location.origin);
+    // Fondo opcional y bandera: mismos datos que ya tiene la pantalla desde que arrancó la partida,
+    // no se le pide nada nuevo al servidor. Si no cargan a tiempo, la tarjeta se arma igual sin ellas.
+    const [fondo, bandera] = await Promise.all([
+      cargarImagenConTope('/story-fondo.jpg'),
+      vistaDiaria.pais ? cargarImagenConTope(`/banderas/${vistaDiaria.pais.codigo}.svg`) : Promise.resolve(null),
+    ]);
+    dibujarTarjeta(canvas.getContext('2d'), datos, location.origin, { fondo, bandera });
 
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error('No pudimos generar la imagen.');

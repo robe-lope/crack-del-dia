@@ -109,3 +109,12 @@ test('la tarjeta para stories mide 1080×1920', () => {
   assert.equal(TARJETA_ANCHO, 1080);
   assert.equal(TARJETA_ALTO, 1920);
 });
+
+test('datosParaCompartir no trae nada para armar la silueta/bandera: eso llega aparte a dibujarTarjeta', () => {
+  // La tarjeta sí muestra silueta+bandera, pero no a través de `datos` (que es lo que también usa
+  // el texto): vienen como imágenes ya cargadas, un parámetro separado de dibujarTarjeta.
+  const d = datosParaCompartir(VISTA_GANADA);
+  assert.ok(!('pais' in d));
+  assert.ok(!('bandera' in d));
+  assert.ok(!('nombre' in d));
+});

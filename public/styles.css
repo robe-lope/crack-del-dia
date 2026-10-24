@@ -167,6 +167,22 @@ input {
   margin-bottom: 1rem;
 }
 
+/* El bloque de título/país/contador crece para empujar el botón de pista al borde derecho. */
+.tablero-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Arriba a la derecha, a la altura del título (no centrado con todo el bloque de texto). */
+.boton--pedir {
+  flex: none;
+  align-self: flex-start;
+  min-height: 2.75rem;
+  padding: 0 0.8rem;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
 .silueta {
   position: relative;
   flex: none;
@@ -607,11 +623,6 @@ input {
   margin-top: 0.7rem;
 }
 
-.acciones .boton {
-  min-height: 2.75rem;
-  font-size: 1.15rem;
-}
-
 .valor-ahora {
   margin: 0;
   color: var(--tiza-suave);
@@ -879,6 +890,16 @@ input {
   }
   .adivinar {
     grid-template-columns: 1fr;
+  }
+  .tablero-cab {
+    gap: 0.6rem;
+  }
+  .tablero-titulo {
+    font-size: 1.6rem;
+  }
+  .boton--pedir {
+    padding: 0 0.6rem;
+    font-size: 0.85rem;
   }
 }
 
