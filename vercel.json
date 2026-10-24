@@ -1,8 +1,7 @@
 {
   "outputDirectory": "public",
   "functions": {
-    "api/**/*.js": { "includeFiles": "data/*.json" },
-    "api/index.js": { "includeFiles": "public/plantilla.html" }
+    "api/**/*.js": { "includeFiles": "data/*.json,public/plantilla.html" },
   },
   "rewrites": [
     { "source": "/", "destination": "/api/index" }
