@@ -5,12 +5,16 @@ debut en la selección) y la bandera. Para lo demás hay que pedir una pista: se
 (carrera, apodo, palmarés, nacimiento, dorsal, curiosidades) en un modal y se revela el próximo dato
 de esa categoría. Cada pista pedida baja el puntaje 100, con un piso de 100. Cuantas menos pidas, más puntos.
 
+Los datos salen de [Wikidata](https://www.wikidata.org/) y de [Wikipedia](https://es.wikipedia.org/)
+(texto bajo [CC BY-SA](https://creativecommons.org/licenses/by-sa/4.0/)); las fotos, de Wikimedia
+Commons, con el crédito de cada autor. El juego atribuye las tres cosas en el pie de la página.
+
 ## Probarlo en tu máquina
 
 ```
 npm install
 npm run dev        # http://localhost:3000
-npm test           # 70 pruebas (lógica + flujo completo contra el servidor real)
+npm test           # 89 pruebas (lógica + flujo completo contra el servidor real)
 ```
 
 Sin `data/players.json` usa `data/players.sample.json` (7 jugadores de ejemplo, **sin verificar**) y lo avisa en pantalla.
@@ -132,6 +136,11 @@ Mismo patrón que `bajar-nacionalidad.mjs`: corré `node bajar-extras.mjs data/p
 
 - `apodo`: P1449 (también conocido como).
 - `palmares`: P166 (premios) y, cuando se puede armar bien, participaciones/títulos de Mundial vía P1344.
+  **Este `palmares` de Wikidata es un piso, no el definitivo**: cubre poco y a veces se equivoca (le
+  faltan campeones del mundo). Después de correr este script conviene correr
+  [`bajar-palmares.mjs`](#palmares-bajar-palmaresmjs), que arma un `palmares` mejor desde las tablas
+  de Wikipedia y lo reemplaza; el de acá queda solo para los jugadores en los que Wikipedia no tenga
+  nada.
 - `lugarNacimiento`: P19, como "Ciudad, País".
 - `dorsal`: P1618.
 
@@ -181,6 +190,46 @@ no consultar Wikidata y aplicar solo las correcciones de `argentina-manual.json`
 Estos dos campos son los que usa el servidor para decidir quién puede ser jugador del día (sumado a si
 es argentino) y para el checkbox "Pasaron por Argentina" del modo práctica — ver
 [Reglas de la partida](#reglas-de-la-partida) y [Modo práctica](#modo-práctica).
+
+## Palmarés (`bajar-palmares.mjs`)
+
+El `palmares` de Wikidata (ver [Pistas extra](#pistas-extra-bajar-extrasmjs)) cubre poco y a veces se
+equivoca: le faltaban, por ejemplo, los campeones del mundo 2022 (Di María, Dybala), 2002 (Roberto
+Carlos) y 1958/62 (Garrincha), o el 1978 de Fillol. Este script arma un `palmares` mejor leyendo
+directamente la sección **"Palmarés"** del artículo del jugador en Wikipedia en español, que trae esos
+títulos en tablas (Título / Club / País / Año). Correlo **después** de `bajar-extras.mjs`, así solo
+reemplaza con algo mejor, nunca deja a alguien sin nada:
+
+```
+node bajar-palmares.mjs data/players.json
+node bajar-palmares.mjs data/players.json --solo-manual   # sin internet: solo aplica extras-manual.json
+```
+
+Qué hace:
+
+1. Resuelve el título del artículo de cada jugador con una consulta a Wikidata (el sitelink a
+   `eswiki`), en lotes. Si no hay artículo en español, prueba en inglés — aunque en la práctica eso
+   casi nunca da un `palmares` nuevo, porque el parser lee específicamente las tablas en español; es
+   solo para que el reporte final diga "sin artículo" con más precisión.
+2. Baja el HTML de cada artículo con la REST API de Wikipedia (`/api/rest_v1/page/html/<título>`),
+   con una pausa de cortesía de ~400 ms entre pedidos y caché en `cache/palmares-html/` (si se corta
+   a mitad de camino, `Ctrl+C` y volvés a correr el mismo comando: retoma de donde quedó).
+3. Prioriza a los jugadores jugables y no excluidos, ordenados por fama, así lo más importante queda
+   cubierto primero si hay que cortarlo.
+4. Parsea esa sección con `lib/palmares.js` (funciones puras, testeadas en `test/palmares.test.mjs`
+   contra páginas reales guardadas) y arma ítems del tipo `"Campeón del Mundo con Argentina (1978)"` o
+   `"Campeonato Metropolitano con River Plate (1975, 1979, 1980)"`, agrupando por torneo y juntando los
+   años. Hasta 10 por jugador, en este orden: selección absoluta, selección juvenil/olímpica, torneos
+   internacionales de club, títulos nacionales y regionales, distinciones individuales.
+5. Si para un jugador no encuentra nada en Wikipedia (sin artículo, sin sección "Palmarés", o una
+   tabla con un formato que el parser no reconoce), **conserva el `palmares` que ya tenía** — nunca lo
+   borra. `extras-manual.json` (el mismo archivo de `bajar-extras.mjs`) tiene prioridad sobre todo
+   esto: si un jugador está ahí con `"palmares"`, ese valor gana siempre.
+
+Al final imprime cuántos jugadores tenían `palmares` antes y después de correrlo, y (para chequear)
+el resultado completo de una lista corta de jugadores conocidos.
+
+Hace copia de seguridad la primera vez (`<archivo>.sin-palmares.bak`).
 
 ## Límites conocidos
 

@@ -206,6 +206,9 @@ function pintar(v) {
   $('#aviso-ejemplo').hidden = !v.ejemplo;
   $('#contador').textContent = terminada ? 'Partida terminada' : contadorDePistas(v.pedidas);
   pintarPais(v.pais);
+  // El jugador de ayer es siempre público (no es una pista de hoy): se ve en el diario, no en práctica.
+  $('#ayer').hidden = practica || !v.ayer;
+  if (!practica && v.ayer) $('#ayer').textContent = `Ayer (Nº ${v.ayer.numero}) era ${v.ayer.nombre}.`;
 
   pintarFilas(v, previas);
   pintarQuedan(v);
@@ -296,19 +299,24 @@ function pintarFinal(v, animar) {
   $('#practica-filtros').hidden = !practica;
 
   const gano = v.estado === 'ganado';
-  $('#final-titulo').textContent = gano ? `¡Era ${v.resultado.nombre}!` : `Era ${v.resultado.nombre}`;
+  // Perdida y de hoy: el servidor no manda resultado, para no filtrar quién era hasta mañana.
+  const oculto = !v.resultado;
+  if (oculto) $('#final-titulo').textContent = 'Perdiste';
+  else $('#final-titulo').textContent = gano ? `¡Era ${v.resultado.nombre}!` : `Era ${v.resultado.nombre}`;
 
   const detalle = $('#final-detalle');
   detalle.replaceChildren();
   if (gano) {
     const con = v.pedidas === 0 ? 'sin pedir una sola pista' : v.pedidas === 1 ? 'con 1 pista' : `con ${v.pedidas} pistas`;
     detalle.append(`Lo sacaste ${con}: `, crear('strong', null, `${v.puntaje} puntos`), '.');
+  } else if (oculto) {
+    detalle.append('Mañana te contamos quién era.');
   } else {
     detalle.append(`Gastaste los ${v.intentosMax} intentos y no salió. Mañana hay otro jugador.`);
   }
 
   const credito = $('#final-credito');
-  if (v.resultado.fotoPagina) {
+  if (v.resultado?.fotoPagina) {
     const enlace = crear('a', null, 'Wikimedia Commons');
     enlace.href = v.resultado.fotoPagina;
     enlace.target = '_blank';

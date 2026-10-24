@@ -20,11 +20,13 @@ Object.assign(process.env, { SEMILLA: entorno.SEMILLA, FECHA_INICIO: entorno.FEC
 
 // Mismos datos y misma semilla que el servidor: así sabemos quién es el jugador de cada día.
 const { jugadorDelDia, datos } = await import('../lib/datos.js');
-const { CATEGORIAS, basicasDe, categoriasDe, puntaje } = await import('../lib/juego.js');
+const { CATEGORIAS, basicasDe, categoriasDe, diaAnterior, fechaDeHoy, puntaje } = await import('../lib/juego.js');
 
 const TOKEN_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const TOKEN_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const TOKEN_C = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const TOKEN_D = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const TOKEN_E = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 let servidor;
 
 async function api(ruta, { token, cuerpo, fecha = '2026-11-01' } = {}) {
@@ -301,4 +303,63 @@ test('ganar sin pedir una sola pista vale 1000', async () => {
   const r = await api('/api/adivinar', { token: TOKEN_B, cuerpo: { id: dia.id }, fecha });
   assert.equal(r.datos.estado, 'ganado');
   assert.equal(r.datos.puntaje, 1000);
+});
+
+// Estos tres usan la fecha real de hoy (no la fija DIA='2026-11-01' del resto del archivo), así que
+// van al final: si fueran antes, sus partidas entrarían en la ventana de "últimos 30 días" que
+// chequea el ranking acumulado de arriba y le cambiarían el conteo.
+test('la partida de hoy perdida no revela al jugador hasta mañana', async () => {
+  const hoy = fechaDeHoy();
+  const dia = jugadorDelDia(hoy);
+  let r;
+  for (let n = 0; n < 3; n++) {
+    r = await api('/api/adivinar', { token: TOKEN_D, cuerpo: { id: otroJugador(dia.id, n).id }, fecha: hoy });
+  }
+  assert.equal(r.datos.estado, 'perdido');
+  assert.equal(r.datos.puntaje, 0);
+  assert.equal(r.datos.resultado, undefined, 'no se manda resultado mientras sea hoy');
+  assert.equal(r.datos.todas, undefined, 'tampoco la lista completa de pistas');
+  const texto = JSON.stringify(r.datos);
+  assert.ok(!texto.includes(dia.nombre), 'el nombre no viaja por ningún lado');
+  assert.ok(!texto.includes(dia.id));
+
+  // Sigue oculto en pedidos posteriores (no solo en la respuesta del momento de perder).
+  r = await api('/api/hoy', { token: TOKEN_D, fecha: hoy });
+  assert.equal(r.datos.resultado, undefined);
+  assert.equal(r.datos.todas, undefined);
+
+  // El resto de la vista (básicas, intentos) se sigue viendo normal.
+  assert.ok(r.datos.basicas.length > 0);
+  assert.equal(r.datos.intentos.length, 3);
+
+  // Ranking y autocompletado no filtran quién era.
+  const ranking = await api('/api/ranking?tipo=dia', { token: TOKEN_D, fecha: hoy });
+  assert.ok(!JSON.stringify(ranking.datos).includes(dia.nombre));
+  const jugadores = await api('/api/jugadores', { token: TOKEN_D, fecha: hoy });
+  assert.ok(JSON.stringify(jugadores.datos).includes(dia.nombre), 'el autocompletado sigue listando a todos, como siempre');
+});
+
+test('ganar la partida de hoy revela todo igual, aunque sea hoy', async () => {
+  const hoy = fechaDeHoy();
+  const dia = jugadorDelDia(hoy);
+  const r = await api('/api/adivinar', { token: TOKEN_E, cuerpo: { id: dia.id }, fecha: hoy });
+  assert.equal(r.datos.estado, 'ganado');
+  assert.equal(r.datos.resultado.nombre, dia.nombre);
+  assert.ok(r.datos.todas.length > 0);
+});
+
+test('/api/hoy siempre manda quién era ayer (null el primer día)', async () => {
+  const hoy = fechaDeHoy();
+  const r = await api('/api/hoy', { token: TOKEN_D, fecha: hoy });
+  const numeroHoy = r.datos.numero;
+  if (numeroHoy <= 1) {
+    assert.equal(r.datos.ayer, null);
+  } else {
+    const deAyer = jugadorDelDia(diaAnterior(hoy));
+    assert.deepEqual(r.datos.ayer, { numero: numeroHoy - 1, nombre: deAyer.nombre });
+  }
+
+  // El primer día de todos (FECHA_INICIO) no tiene ayer.
+  const primero = await api('/api/hoy', { token: TOKEN_D, fecha: entorno.FECHA_INICIO });
+  assert.equal(primero.datos.ayer, null);
 });
