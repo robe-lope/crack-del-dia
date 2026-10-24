@@ -63,6 +63,7 @@ test('el init agrega las columnas pedidas y argentina, y se puede correr varias 
   const p = await store.obtenerPartida('2026-10-30', TOKEN);
   assert.deepEqual(p.pedidas, [], 'una partida vieja en curso vale como 0 pistas pedidas');
   assert.equal(p.estado, 'jugando');
+  assert.equal(p.jugador, null, 'una partida vieja sin la columna queda con jugador null');
 
   const pr = await store.obtenerPractica('vieja-1', TOKEN);
   assert.deepEqual(pr.pedidas, []);
@@ -96,6 +97,26 @@ test('una partida nueva arranca sin pistas pedidas', async () => {
   const p = await store.obtenerPartida('2026-11-15', TOKEN);
   assert.deepEqual(p.pedidas, []);
   assert.equal(p.estado, 'jugando');
+});
+
+test('crearPartida guarda el jugador, y no lo pisa si se vuelve a llamar con otro id', async () => {
+  const store = await import('../lib/store.js');
+  await store.crearPartida('2026-11-16', TOKEN, 3000, 'Q99');
+  assert.equal((await store.obtenerPartida('2026-11-16', TOKEN)).jugador, 'Q99');
+
+  // Simula "el pool cambió": crearPartida se vuelve a llamar (como hace cargar() en cada pedido),
+  // pero como la fila ya existe, INSERT OR IGNORE no toca nada.
+  await store.crearPartida('2026-11-16', TOKEN, 3000, 'Q100');
+  assert.equal((await store.obtenerPartida('2026-11-16', TOKEN)).jugador, 'Q99', 'no cambia el jugador ya guardado');
+});
+
+test('completarJugador solo completa si estaba en null', async () => {
+  const store = await import('../lib/store.js');
+  await store.completarJugador('2026-10-30', TOKEN, 'Q1');
+  assert.equal((await store.obtenerPartida('2026-10-30', TOKEN)).jugador, 'Q1');
+
+  await store.completarJugador('2026-10-30', TOKEN, 'Q2');
+  assert.equal((await store.obtenerPartida('2026-10-30', TOKEN)).jugador, 'Q1', 'ya no estaba en null: no se pisa');
 });
 
 test('un pedidas corrupto en la base no voltea el servidor', async () => {
