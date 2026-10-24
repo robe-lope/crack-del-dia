@@ -1,7 +1,14 @@
 // Crack del Día: pantalla del juego diario.
 // El servidor decide todo (qué pistas se ven, si acertaste, cuántos puntos). Acá solo se dibuja y se escribe.
 
-const NOMBRE = 'Crack del Día';
+import {
+  NOMBRE_JUEGO as NOMBRE,
+  TARJETA_ALTO,
+  TARJETA_ANCHO,
+  datosParaCompartir,
+  dibujarTarjeta,
+  textoParaCompartir,
+} from './compartir.js';
 
 const $ = (selector, dentro = document) => dentro.querySelector(selector);
 
@@ -183,7 +190,6 @@ function pintarPais(pais) {
   nombre.hidden = false;
 }
 
-const cuantasPistas = (n) => (n === 0 ? 'sin pistas' : n === 1 ? '1 pista' : `${n} pistas`);
 const contadorDePistas = (n) => (n === 0 ? 'Sin pistas pedidas' : n === 1 ? '1 pista pedida' : `${n} pistas pedidas`);
 
 function pintar(v) {
@@ -293,6 +299,7 @@ function pintarFinal(v, animar) {
 
   const practica = v.modo === 'practica';
   $('#compartir').hidden = practica;
+  $('#compartir-imagen').hidden = practica;
   $('#ver-ranking').hidden = practica;
   $('#proximo').hidden = practica;
   $('#practica-otro').hidden = !practica;
@@ -599,25 +606,8 @@ async function pedirPista(categoria) {
 }
 
 // ───────────── Compartir ─────────────
-
-function textoParaCompartir(v) {
-  const gano = v.estado === 'ganado';
-  const errores = v.intentos.length;
-  const resultado = gano
-    ? [
-        cuantasPistas(v.pedidas),
-        errores === 0 ? 'sin errores' : errores === 1 ? '1 error' : `${errores} errores`,
-        `${v.puntaje} puntos`,
-      ].join(' · ')
-    : 'No salió';
-  const lineas = [`${NOMBRE} Nº${v.numero}`, resultado];
-  if (v.pedidas > 0) lineas.push(`Pistas ${'🟨'.repeat(v.pedidas)}`);
-  lineas.push(
-    `Intentos ${'🟥'.repeat(errores)}${gano ? '🟩' : ''}${'⬜'.repeat(Math.max(0, v.intentosMax - errores - (gano ? 1 : 0)))}`,
-  );
-  lineas.push(location.origin);
-  return lineas.join('\n');
-}
+// El texto sale de compartir.js (datosParaCompartir + textoParaCompartir), compartido con la tarjeta
+// para stories: nunca nada que identifique al jugador del día.
 
 async function copiar(texto) {
   try {
@@ -637,6 +627,67 @@ async function copiar(texto) {
     }
     area.remove();
     return ok;
+  }
+}
+
+// El menú nativo para compartir si el navegador lo tiene (celular); si no (escritorio), al portapapeles.
+async function compartirTexto() {
+  if (!vistaDiaria) return;
+  const texto = textoParaCompartir(datosParaCompartir(vistaDiaria), location.origin);
+  if (navigator.share) {
+    try {
+      await navigator.share({ text: texto, url: location.origin });
+      return;
+    } catch (error) {
+      if (error?.name === 'AbortError') return; // cerró el menú sin elegir nada: no es un error
+      // si falla por otro motivo, se sigue probando copiar
+    }
+  }
+  const ok = await copiar(texto);
+  mensaje(ok ? 'Copiado. Pegalo donde quieras.' : 'No pudimos copiarlo. Seleccioná y copiá el texto a mano.', !ok);
+}
+
+// La tarjeta para stories, dibujada en un <canvas> fuera de la página (no hace falta que esté en el
+// DOM para generar la imagen). Si se puede compartir el archivo, se abre el menú nativo (desde ahí
+// se elige Instagram); si no, se descarga el PNG y la persona lo sube a mano.
+async function compartirImagen() {
+  if (!vistaDiaria) return;
+  const boton = $('#compartir-imagen');
+  boton.disabled = true;
+  try {
+    const datos = datosParaCompartir(vistaDiaria);
+    const canvas = document.createElement('canvas');
+    canvas.width = TARJETA_ANCHO;
+    canvas.height = TARJETA_ALTO;
+    if (document.fonts?.ready) await document.fonts.ready; // si no, puede dibujar con la fuente de respaldo
+    dibujarTarjeta(canvas.getContext('2d'), datos, location.origin);
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('No pudimos generar la imagen.');
+    const archivo = new File([blob], 'crack-del-dia.png', { type: 'image/png' });
+
+    if (navigator.canShare?.({ files: [archivo] })) {
+      try {
+        await navigator.share({ files: [archivo], text: textoParaCompartir(datos, location.origin) });
+        return;
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+        // si falla por otro motivo, se sigue a la descarga
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const enlace = crear('a');
+    enlace.href = url;
+    enlace.download = 'crack-del-dia.png';
+    document.body.append(enlace);
+    enlace.click();
+    enlace.remove();
+    URL.revokeObjectURL(url);
+    mensaje('Imagen descargada. Abrí Instagram y subila a tu story.');
+  } catch (error) {
+    mensaje(error.message || 'No pudimos generar la imagen.', true);
+  } finally {
+    boton.disabled = false;
   }
 }
 
@@ -876,10 +927,8 @@ async function iniciar() {
     cargarPractica();
   });
   $('#ver-ranking').addEventListener('click', () => mostrar('ranking'));
-  $('#compartir').addEventListener('click', async () => {
-    const ok = await copiar(textoParaCompartir(vistaDiaria));
-    mensaje(ok ? 'Resultado copiado. Pegalo donde quieras.' : 'No pudimos copiarlo. Seleccioná y copiá el texto a mano.', !ok);
-  });
+  $('#compartir').addEventListener('click', compartirTexto);
+  $('#compartir-imagen').addEventListener('click', compartirImagen);
   for (const boton of document.querySelectorAll('.subpestana')) {
     boton.addEventListener('click', () => {
       tipoRanking = boton.dataset.tipo;
