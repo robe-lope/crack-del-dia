@@ -104,14 +104,17 @@ omite si nunca debutó). La bandera también se ve desde el principio: no es una
 ordenada de ítems y solo aparece en el modal si el jugador tiene datos para ella. Cada pedido revela
 el próximo ítem de esa categoría.
 
-| Categoría      | De dónde sale                                            | Repetible |
-|----------------|-----------------------------------------------------------|-----------|
-| Carrera        | `carrera` (los clubes, agrupados, hasta 8, "1°", "2°"...) | Sí        |
-| Apodo          | `apodo` (string)                                          | No        |
-| Palmarés       | `titulo` (string, a mano) + `palmares` (array de strings) | Sí        |
-| Nacimiento     | `lugarNacimiento` (string, "Ciudad, País")                | No        |
-| Dorsal         | `dorsal` (número)                                         | No        |
-| Curiosidades   | `curiosidades` (array de strings, **se carga a mano**)    | Sí        |
+| Categoría      | En pantalla                   | De dónde sale                                            | Repetible |
+|----------------|--------------------------------|-----------------------------------------------------------|-----------|
+| Carrera        | Carrera                        | `carrera` (los clubes, agrupados, hasta 8, "1°", "2°"...) | Sí        |
+| Apodo          | Apodo                          | `apodo` (string)                                          | No        |
+| Palmarés       | **Vitrina** (títulos y premios) | `titulo` (string, a mano) + `palmares` (array de strings) | Sí        |
+| Nacimiento     | Nacimiento                     | `lugarNacimiento` (string, "Ciudad, País")                | No        |
+| Dorsal         | Dorsal                         | `dorsal` (número)                                         | No        |
+| Curiosidades   | Curiosidades                   | `curiosidades` (array de strings, **se carga a mano**)    | Sí        |
+
+"Vitrina" es solo el nombre en pantalla (el modal aclara "títulos y premios"); por dentro sigue
+siendo la categoría `palmares`, con el campo `palmares` y el script `bajar-palmares.mjs` de siempre.
 
 El catálogo está en un solo lugar (`CATEGORIAS` en `lib/juego.js`): para agregar una categoría nueva
 alcanza con sumar una entrada ahí, con una función `items(jugador)` que devuelva la lista ordenada.
@@ -218,9 +221,14 @@ Qué hace:
    cubierto primero si hay que cortarlo.
 4. Parsea esa sección con `lib/palmares.js` (funciones puras, testeadas en `test/palmares.test.mjs`
    contra páginas reales guardadas) y arma ítems del tipo `"Campeón del Mundo con Argentina (1978)"` o
-   `"Campeonato Metropolitano con River Plate (1975, 1979, 1980)"`, agrupando por torneo y juntando los
-   años. Hasta 10 por jugador, en este orden: selección absoluta, selección juvenil/olímpica, torneos
-   internacionales de club, títulos nacionales y regionales, distinciones individuales.
+   `"Campeonato Metropolitano con River Plate (1975, 1979, 1980)"`, con el género y el artículo
+   correctos ("Campeón del Sudamericano Sub-20", "Campeón de la Copa América", "Campeón de la
+   Finalissima" para la Copa de Campeones Conmebol-UEFA), agrupando por torneo y juntando los años, y
+   descartando distinciones de relleno (como "Título de Glorias de..." de un club menor). Hasta 12 por
+   jugador, en este orden: selección absoluta, selección juvenil/olímpica, los premios individuales
+   más importantes (Balón de Oro, Bota de Oro, mejor jugador o arquero de un Mundial — para que a los
+   grandes no se les pierdan entre tantos títulos de club), torneos internacionales de club, títulos
+   nacionales y regionales, el resto de las distinciones individuales.
 5. Si para un jugador no encuentra nada en Wikipedia (sin artículo, sin sección "Palmarés", o una
    tabla con un formato que el parser no reconoce), **conserva el `palmares` que ya tenía** — nunca lo
    borra. `extras-manual.json` (el mismo archivo de `bajar-extras.mjs`) tiene prioridad sobre todo
