@@ -1,7 +1,7 @@
 // Crack del Día: pantalla del juego diario.
 // El servidor decide todo (qué pistas se ven, si acertaste, cuántos puntos). Acá solo se dibuja y se escribe.
 
-const NOMBRE = 'Crack del Día';
+import { NOMBRE_JUEGO as NOMBRE, datosParaCompartir, textoParaCompartir } from './compartir.js';
 
 const $ = (selector, dentro = document) => dentro.querySelector(selector);
 
@@ -183,7 +183,6 @@ function pintarPais(pais) {
   nombre.hidden = false;
 }
 
-const cuantasPistas = (n) => (n === 0 ? 'sin pistas' : n === 1 ? '1 pista' : `${n} pistas`);
 const contadorDePistas = (n) => (n === 0 ? 'Sin pistas pedidas' : n === 1 ? '1 pista pedida' : `${n} pistas pedidas`);
 
 function pintar(v) {
@@ -599,25 +598,8 @@ async function pedirPista(categoria) {
 }
 
 // ───────────── Compartir ─────────────
-
-function textoParaCompartir(v) {
-  const gano = v.estado === 'ganado';
-  const errores = v.intentos.length;
-  const resultado = gano
-    ? [
-        cuantasPistas(v.pedidas),
-        errores === 0 ? 'sin errores' : errores === 1 ? '1 error' : `${errores} errores`,
-        `${v.puntaje} puntos`,
-      ].join(' · ')
-    : 'No salió';
-  const lineas = [`${NOMBRE} Nº${v.numero}`, resultado];
-  if (v.pedidas > 0) lineas.push(`Pistas ${'🟨'.repeat(v.pedidas)}`);
-  lineas.push(
-    `Intentos ${'🟥'.repeat(errores)}${gano ? '🟩' : ''}${'⬜'.repeat(Math.max(0, v.intentosMax - errores - (gano ? 1 : 0)))}`,
-  );
-  lineas.push(location.origin);
-  return lineas.join('\n');
-}
+// El texto sale de compartir.js (datosParaCompartir + textoParaCompartir), compartido con la tarjeta
+// para stories: nunca nada que identifique al jugador del día.
 
 async function copiar(texto) {
   try {
@@ -638,6 +620,23 @@ async function copiar(texto) {
     area.remove();
     return ok;
   }
+}
+
+// El menú nativo para compartir si el navegador lo tiene (celular); si no (escritorio), al portapapeles.
+async function compartirTexto() {
+  if (!vistaDiaria) return;
+  const texto = textoParaCompartir(datosParaCompartir(vistaDiaria), location.origin);
+  if (navigator.share) {
+    try {
+      await navigator.share({ text: texto, url: location.origin });
+      return;
+    } catch (error) {
+      if (error?.name === 'AbortError') return; // cerró el menú sin elegir nada: no es un error
+      // si falla por otro motivo, se sigue probando copiar
+    }
+  }
+  const ok = await copiar(texto);
+  mensaje(ok ? 'Copiado. Pegalo donde quieras.' : 'No pudimos copiarlo. Seleccioná y copiá el texto a mano.', !ok);
 }
 
 // ───────────── Apodo ─────────────
@@ -876,10 +875,7 @@ async function iniciar() {
     cargarPractica();
   });
   $('#ver-ranking').addEventListener('click', () => mostrar('ranking'));
-  $('#compartir').addEventListener('click', async () => {
-    const ok = await copiar(textoParaCompartir(vistaDiaria));
-    mensaje(ok ? 'Resultado copiado. Pegalo donde quieras.' : 'No pudimos copiarlo. Seleccioná y copiá el texto a mano.', !ok);
-  });
+  $('#compartir').addEventListener('click', compartirTexto);
   for (const boton of document.querySelectorAll('.subpestana')) {
     boton.addEventListener('click', () => {
       tipoRanking = boton.dataset.tipo;

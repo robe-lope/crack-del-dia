@@ -56,6 +56,9 @@ En desarrollo se puede probar otro día con `?fecha=2026-11-05` en las llamadas 
    - `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN`
    - `SEMILLA`: un texto largo y secreto. Define el orden de los jugadores. Si es público, se pueden saber los de los próximos días.
    - Opcionales: `FECHA_INICIO` (día del Nº 1, por defecto 2026-10-22) `MIN_POPULARIDAD` (piso general de idiomas de Wikipedia) y `MIN_POP_ARGENTINOS` / `MIN_POP_SUDAMERICANOS` / `MIN_POP_MUNDIALES` (pisos por grupo; por defecto 30 / 55 / 80). Junto con el filtro de [quién puede ser jugador del día](#reglas-de-la-partida) (argentino o `jugoEnArgentina`), da unos 240 jugadores del día posibles.
+   - `SITE_URL` (opcional): la URL pública del sitio, p. ej. `https://crackdeldia.com.ar` (sin barra
+     final). La usan las etiquetas Open Graph/Twitter (`og:url`, `og:image`...) — ver
+     [Compartir](#compartir). Sin esta variable, usa `https://crack-del-dia.vercel.app` como fallback.
 3. Subí el proyecto a GitHub e importalo en Vercel (Framework Preset: Other, sin comando de build).
 
 La tabla `partidas` y `practicas` de una base ya existente se actualiza sola la primera vez que el
@@ -131,6 +134,31 @@ una línea punteada las que no se llegaron a usar.
 La partida guarda **qué categorías se pidieron, en qué orden** (columna `pedidas`, un JSON como
 `["carrera","carrera","apodo"]`), no solo un contador. La columna vieja `pistas` se mantiene al día (=
 cantidad de pistas pedidas) porque el ranking y el historial la siguen leyendo.
+
+## Compartir
+
+Solo el modo diario (la práctica no tiene botón de compartir). Lo arma `public/compartir.js`
+(funciones puras, testeadas en `test/compartir.test.mjs`): **nunca** incluye el nombre, la foto, el
+club ni la nacionalidad del jugador del día, ni siquiera habiendo ganado.
+
+**Botón "Compartir"**: arma el texto (`Nº`, resultado, pistas y intentos en emoji, puntaje y racha) y
+lo pasa a `navigator.share({ text, url })` si el navegador lo tiene (la mayoría de los celulares); si
+no (navegadores de escritorio), lo copia al portapapeles y avisa "Copiado". Si la persona cierra el
+menú de compartir sin elegir nada, no se muestra ningún error.
+
+**Open Graph / Twitter card** (`public/plantilla.html`, con `{{SITE_URL}}` sin resolver): para que
+`og:image` sea una URL absoluta (como pide el estándar) hace falta conocer el dominio del sitio al
+momento de servir la página, y eso no se puede hacer desde un archivo estático. La solución más
+simple que funciona en Vercel sin build propio: `api/index.js` lee `public/plantilla.html`, reemplaza
+`{{SITE_URL}}` por la variable de entorno `SITE_URL` (con un fallback si no está puesta) y sirve el
+resultado; `vercel.json` tiene un rewrite de `"/"` a `"/api/index"` para que sea esa función, y no el
+archivo estático, la que responda en la raíz. `dev-server.mjs` hace lo mismo en local (con
+`http://localhost:3000` como `SITE_URL` por defecto), así que **no visites `/plantilla.html` directo**:
+vas a ver el placeholder `{{SITE_URL}}` sin reemplazar. El resto de `/public` se sigue sirviendo tal
+cual, como archivos estáticos.
+
+**Falta agregar `public/og.png`** (1200×630) a mano — este trabajo no lo generó. Mientras no esté, el
+link de `og:image` da 404 en las vistas previas (el resto de la página funciona igual).
 
 ## Pistas extra (`bajar-extras.mjs`)
 

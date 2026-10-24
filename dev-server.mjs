@@ -10,6 +10,7 @@ process.env.PERMITIR_FECHA ??= '1'; // en local se puede probar otro día con ?f
 const RAIZ = fileURLToPath(new URL('.', import.meta.url));
 const PUBLICA = join(RAIZ, 'public');
 const PUERTO = Number(process.env.PORT || 3000);
+process.env.SITE_URL ??= `http://localhost:${PUERTO}`; // así og:image etc. apuntan acá y no a producción
 
 const TIPOS = {
   '.html': 'text/html; charset=utf-8',
@@ -35,6 +36,13 @@ async function leerCuerpo(req) {
 
 const servidor = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
+
+  if (url.pathname === '/') {
+    // Igual que el rewrite "/" -> "/api/index" de vercel.json: así local y producción resuelven
+    // {{SITE_URL}} de la misma forma (si no, public/plantilla.html se vería con el placeholder crudo).
+    const modulo = await import('./api/index.js');
+    return modulo.default(req, res);
+  }
 
   if (url.pathname.startsWith('/api/')) {
     // Admite subcarpetas (api/practica/nueva.js), igual que Vercel.
