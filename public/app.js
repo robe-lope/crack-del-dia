@@ -233,6 +233,7 @@ function pintar(v) {
   // Controles
   $('#form').hidden = terminada;
   $('#acciones').hidden = terminada;
+  $('#pedir').hidden = terminada;
   $('#pedir').disabled = !quedanPistas(v);
   const valor = $('#valor');
   if (!terminada) {
