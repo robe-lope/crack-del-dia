@@ -857,6 +857,10 @@ input {
   margin: 0;
 }
 
+.pie a {
+  color: inherit;
+}
+
 @media (max-width: 380px) {
   .fila {
     grid-template-columns: 4.6rem 1fr;
