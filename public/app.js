@@ -519,6 +519,9 @@ async function arriesgar(evento) {
 
 let abrioElModal = null; // a quién le devolvemos el foco al cerrar
 
+// "Vitrina" sola no dice mucho: en el modal se aclara de qué se trata.
+const etiquetaCategoria = (d) => (d.id === 'palmares' ? `${d.nombre} (títulos y premios)` : d.nombre);
+
 function pintarModal(v) {
   $('#modal-ayuda').replaceChildren(
     'Cada pista baja ',
@@ -535,7 +538,7 @@ function pintarModal(v) {
       boton.type = 'button';
       boton.disabled = d.quedan === 0;
       boton.append(
-        crear('span', 'categoria-nombre', d.nombre),
+        crear('span', 'categoria-nombre', etiquetaCategoria(d)),
         crear('span', 'categoria-costo', d.quedan === 0 ? 'Agotada' : `−${v.costoPista} puntos`),
         crear(
           'span',

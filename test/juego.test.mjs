@@ -95,7 +95,7 @@ test('cada categoría devuelve sus ítems y las vacías no aparecen', () => {
 test('el palmarés junta el título cargado a mano y no repite', () => {
   const items = categoriasDe(COMPLETO).get('palmares');
   assert.deepEqual(items.map((i) => i.valor), ['Clausura 2004', 'Copa Libertadores 2000']);
-  assert.ok(items.every((i) => i.etiqueta === 'Palmarés'));
+  assert.ok(items.every((i) => i.etiqueta === 'Vitrina'));
   // Vacíos y repetidos se descartan.
   assert.equal(categoriasDe({ palmares: ['  ', 'Copa', 'Copa', null] }).get('palmares').length, 1);
 });
