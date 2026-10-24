@@ -196,3 +196,20 @@ test('fraseCampeon reconoce los torneos de selección más comunes', () => {
 test('fraseCampeon cae a una frase genérica para un torneo que no está en la lista', () => {
   assert.equal(fraseCampeon('Copa Artemio Franchi'), 'Campeón de la Copa Artemio Franchi');
 });
+
+// Regresión: Wikipedia numera a mano los títulos repetidos del mismo tipo ("Ligue 1", "Ligue 1 (2)",
+// "Ligue 1 (3)"...) en la columna "Título"; sin limpiar eso, cada edición queda como un ítem aparte.
+test('títulos repetidos numerados a mano ("Ligue 1 (2)") se agrupan igual que el primero', () => {
+  const html = `<!doctype html><title>x</title>
+    <section><h2 id="Palmarés">Palmarés</h2>
+      <section><h3>Campeonatos nacionales</h3>
+        <table><tbody>
+          <tr><th>Título</th><th>Club</th><th>País</th><th>Año</th></tr>
+          <tr><td>Ligue 1</td><td>París Saint Germain</td><td>Francia</td><td>2013-14</td></tr>
+          <tr><td>Ligue 1 (2)</td><td>París Saint Germain</td><td>Francia</td><td>2014-15</td></tr>
+          <tr><td>Ligue 1 (3)</td><td>París Saint Germain</td><td>Francia</td><td>2015-16</td></tr>
+        </tbody></table>
+      </section>
+    </section>`;
+  assert.deepEqual(extraerPalmares(html), ['Ligue 1 con París Saint Germain (2013, 2014, 2015)']);
+});
