@@ -38621,72 +38621,63 @@
   "id": "Q17462635",
   "nombre": "Marcos Acuña",
   "alias": [
-   "Marcos Javier Acuña"
+    "Marcos Javier Acuña"
   ],
   "nacimiento": 1991,
   "popularidad": 43,
   "origen": "Argentinos",
   "foto": "https://commons.wikimedia.org/wiki/Special:FilePath/Argentina%20-%20Colombia%202022%20(52)%20(cropped).jpg?width=800",
   "fotoPagina": "https://commons.wikimedia.org/wiki/File:Argentina_-_Colombia_2022_(52)_(cropped).jpg",
-  "posicion": "Delantero",
+  "posicion": "Defensor",
   "posiciones": [
-   "extremo izquierdo"
+    "lateral izquierdo",
+    "extremo izquierdo"
   ],
   "alturaCm": 172,
   "debut": 2011,
   "retiro": null,
   "activo": true,
   "retiroIncompleto": false,
-  "debutSeleccion": null,
+  "debutSeleccion": 2016,
   "carrera": [
-   {
-    "club": "Ferro Carril Oeste",
-    "desde": 2011,
-    "hasta": 2014
-   },
-   {
-    "club": "Racing",
-    "desde": 2014,
-    "hasta": null
-   },
-   {
-    "club": "Boca Juniors",
-    "desde": 2019,
-    "hasta": null
-   }
+    { "club": "Ferro Carril Oeste", "desde": 2011, "hasta": 2014 },
+    { "club": "Racing", "desde": 2014, "hasta": 2017 },
+    { "club": "Sporting CP", "desde": 2017, "hasta": 2020 },
+    { "club": "Sevilla", "desde": 2020, "hasta": 2024 },
+    { "club": "River Plate", "desde": 2024, "hasta": null }
   ],
   "selecciones": [
-   {
-    "equipo": "selección de fútbol de Argentina",
-    "desde": null,
-    "hasta": null
-   }
+    {
+      "equipo": "selección de fútbol de Argentina",
+      "desde": 2016,
+      "hasta": null
+    }
   ],
   "jugable": true,
   "excluir": false,
   "nacionalidad": {
-   "codigo": "ar",
-   "nombre": "Argentina"
+    "codigo": "ar",
+    "nombre": "Argentina"
   },
   "lugarNacimiento": "Zapala, Argentina",
   "dorsal": 8,
   "jugoEnArgentina": true,
   "clubesArgentinos": [
-   "Racing Club",
-   "Boca Juniors",
-   "Club Ferro Carril Oeste"
+    "Racing Club",
+    "River Plate",
+    "Club Ferro Carril Oeste"
   ],
   "palmares": [
-   "Campeón de la Copa América con Argentina (2021, 2024)",
-   "Campeón de la Finalissima con Argentina (2022)",
-   "Campeón del Mundo con Argentina (2022)",
-   "Liga Europa de la UEFA con Sevilla F. C. (2022)",
-   "Primera División con Racing Club (2014)",
-   "Copa de la Liga con Sporting de Lisboa (2017, 2018)",
-   "Copa de Portugal con Sporting de Lisboa (2018)",
-   "Incluido en el Equipo Ideal de la Liga Europa de la UEFA (2022)"
+    "Campeón de la Copa América con Argentina (2021, 2024)",
+    "Campeón de la Finalissima con Argentina (2022)",
+    "Campeón del Mundo con Argentina (2022)",
+    "Liga Europa de la UEFA con Sevilla F. C. (2023)",
+    "Primera División con Racing Club (2014)",
+    "Copa de la Liga con Sporting de Lisboa (2018, 2019)",
+    "Copa de Portugal con Sporting de Lisboa (2019)",
+    "Incluido en el Equipo Ideal de la Liga Europa de la UEFA (2022)"
   ]
- },
+},
  {
   "id": "Q16553648",
   "nombre": "Cristian Pavón",
