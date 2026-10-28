@@ -634,7 +634,7 @@ async function copiar(texto) {
 // El menú nativo para compartir si el navegador lo tiene (celular); si no (escritorio), al portapapeles.
 async function compartirTexto() {
   if (!vistaDiaria) return;
-  const texto = textoParaCompartir(datosParaCompartir(vistaDiaria), location.origin);
+  const texto = textoParaCompartir(datosParaCompartir(vistaDiaria));
   if (navigator.share) {
     try {
       await navigator.share({ text: texto, url: location.origin });
