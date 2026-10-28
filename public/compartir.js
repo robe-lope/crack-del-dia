@@ -32,12 +32,12 @@ export function datosParaCompartir(v) {
 }
 
 // El texto para compartir. `url` aparte (no se lee location.origin acá) para poder testear sin DOM.
-export function textoParaCompartir(datos, url) {
+export function textoParaCompartir(datos) {
   const pistas = datos.pistas > 0 ? '🟨'.repeat(datos.pistas) : 'sin pistas';
   const vacios = Math.max(0, datos.intentosMax - datos.intentosUsados.length);
   const intentos = datos.intentosUsados.map((u) => (u === 'acierto' ? '🟩' : '🟥')).join('') + '⬜'.repeat(vacios);
   const puntaje = datos.racha > 0 ? `${datos.puntaje} puntos · racha ${datos.racha}` : `${datos.puntaje} puntos`;
-  return [`${NOMBRE_JUEGO} Nº${datos.numero}`, datos.resultado, `Pistas: ${pistas}`, `Intentos: ${intentos}`, puntaje, url].join('\n');
+  return [`${NOMBRE_JUEGO} Nº${datos.numero}`, datos.resultado, `Pistas: ${pistas}`, `Intentos: ${intentos}`, puntaje].join('\n');
 }
 
 // ───────────── Tarjeta para stories (canvas) ─────────────
