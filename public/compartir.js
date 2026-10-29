@@ -23,7 +23,9 @@ export function datosParaCompartir(v) {
     fecha: v.fecha,
     gano,
     resultado: gano ? `Lo saqué en ${intentosUsados.length} intento${intentosUsados.length === 1 ? '' : 's'}` : 'No lo saqué',
-    pistas: v.pedidas,
+    // Con el tope del servidor no debería pasar, pero una partida vieja puede tener más pistas:
+    // ni el texto ni la tarjeta muestran más cuadraditos que maxPistas.
+    pistas: Math.min(v.pedidas, v.maxPistas ?? v.pedidas),
     intentosUsados,
     intentosMax: v.intentosMax,
     puntaje: v.puntaje,

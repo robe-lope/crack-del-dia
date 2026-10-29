@@ -455,3 +455,12 @@ test('/api/hoy manda Server-Timing con cada tramo y el total', async () => {
   const nombres = r.headers.get('server-timing').split(', ').map((t) => t.split(';')[0]);
   assert.deepEqual(nombres.sort(), ['datos', 'db-apodo', 'db-partida', 'db-racha', 'esquema', 'total', 'vista']);
 });
+
+test('la página se cachea en la CDN y las etiquetas Open Graph salen con SITE_URL', async () => {
+  const r = await fetch(`${BASE}/`);
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('cache-control'), 'public, s-maxage=3600, stale-while-revalidate=86400');
+  const html = await r.text();
+  assert.ok(!html.includes('{{SITE_URL}}'));
+  assert.match(html, new RegExp(`<meta property="og:[a-z:]+" content="${BASE}`));
+});
