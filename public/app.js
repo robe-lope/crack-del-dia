@@ -68,8 +68,9 @@ function guardarEleccion() {
   }
 }
 
-async function api(ruta, cuerpo) {
+async function api(ruta, cuerpo, signal) {
   const respuesta = await fetch(ruta, {
+    signal,
     method: cuerpo ? 'POST' : 'GET',
     headers: { 'X-Token': token, ...(cuerpo ? { 'Content-Type': 'application/json' } : {}) },
     body: cuerpo ? JSON.stringify(cuerpo) : undefined,
@@ -349,12 +350,52 @@ function actualizarCuenta() {
   const s = Math.floor(ms / 1000);
   const dos = (n) => String(n).padStart(2, '0');
   $('#cuenta').textContent = `${dos(Math.floor(s / 3600))}:${dos(Math.floor((s % 3600) / 60))}:${dos(s % 60)}`;
-  if (ms < 1500) setTimeout(refrescarDia, 2500);
+  if (ms < 1500 && !refrescoProgramado) {
+    refrescoProgramado = true; // este tic y el siguiente caen los dos debajo de 1,5 s: se programa una sola vez
+    setTimeout(() => {
+      refrescoProgramado = false;
+      refrescarDia();
+    }, 2500);
+  }
 }
 
+// ───────────── Pedidos a /api/hoy ─────────────
+
+let refrescoProgramado = false;
+let hoyEnVuelo = null; // si ya hay un pedido andando, se reusa su promesa
+let controlHoy = null;
+let ultimoHoy = 0; // cuándo llegó la última respuesta buena
+let trabajando = false; // mandando un intento o pidiendo una pista
+
+const diaArgentino = () => new Date(Date.now() - 3 * 3_600_000).toISOString().slice(0, 10);
+
+// `nuevo`: cancela el que esté en vuelo (es de antes del cambio de día) y lanza otro.
+function pedirHoy({ nuevo = false } = {}) {
+  if (hoyEnVuelo && !nuevo) return hoyEnVuelo;
+  controlHoy?.abort();
+  const control = (controlHoy = new AbortController());
+  const pedido = api('/api/hoy', null, control.signal)
+    .then((v) => {
+      ultimoHoy = Date.now();
+      return v;
+    })
+    .finally(() => {
+      if (hoyEnVuelo === pedido) hoyEnVuelo = controlHoy = null;
+    });
+  hoyEnVuelo = pedido;
+  return pedido;
+}
+
+// No se refresca con algo abierto (modal, confirmación, desplegable) ni a mitad de un intento o una pista.
+const hayAlgoEnCurso = () => trabajando || $('#modal').open || $('#confirmar').open || sugeridos.length > 0;
+
+// Al volver a la pestaña (y a las 00:00): solo si cambió el día argentino o pasó más de un minuto.
 async function refrescarDia() {
+  const otroDia = Boolean(vistaDiaria) && vistaDiaria.fecha !== diaArgentino();
+  if (!otroDia && Date.now() - ultimoHoy < 60_000) return;
+  if (hayAlgoEnCurso()) return;
   try {
-    const v = await api('/api/hoy');
+    const v = await pedirHoy({ nuevo: otroDia });
     if (!vistaDiaria || v.numero !== vistaDiaria.numero) {
       vistaDiaria = null;
       if (pantalla === 'juego' && vista?.modo !== 'practica') {
@@ -523,6 +564,7 @@ const quedanPistas = (v) =>
 const esLaUltima = (v) => v.modo !== 'practica' && v.maxPistas != null && v.pedidas === v.maxPistas - 1;
 
 function ocupado(si) {
+  trabajando = si;
   $('#arriesgar').disabled = si;
   $('#pedir').disabled = si || !quedanPistas(vista);
 }
@@ -964,7 +1006,7 @@ async function iniciar() {
   programarJugadores();
 
   try {
-    pintar(await api('/api/hoy'));
+    pintar(await pedirHoy());
   } catch (error) {
     mensaje(error.message, true);
     const reintentar = crear('button', 'boton boton--borde', 'Reintentar');
