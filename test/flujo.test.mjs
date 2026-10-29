@@ -86,6 +86,24 @@ test('el autocompletado trae a todos los jugadores', async () => {
   assert.equal(r.datos.jugadores.length, datos().lista.length);
 });
 
+test('el autocompletado manda solo lo mínimo y se puede revalidar con el ETag', async () => {
+  const r = await fetch(`${BASE}/api/jugadores`);
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('cache-control'), 'public, s-maxage=86400, stale-while-revalidate=604800');
+  const etag = r.headers.get('etag');
+  assert.ok(etag);
+  const { jugadores, ...resto } = await r.json();
+  assert.deepEqual(Object.keys(resto), []);
+  for (const j of jugadores) {
+    assert.deepEqual(Object.keys(j).filter((k) => !['id', 'n', 'a', 'e'].includes(k)), [], `campos de más en ${j.id}`);
+    assert.equal(typeof j.id, 'string');
+    assert.equal(typeof j.n, 'string');
+    assert.ok(Array.isArray(j.a));
+  }
+  const otra = await fetch(`${BASE}/api/jugadores`, { headers: { 'If-None-Match': etag } });
+  assert.equal(otra.status, 304);
+});
+
 test('al empezar se ven todas las básicas, ninguna pista pedida y nada de lo que no se pidió', async () => {
   const dia = jugadorDelDia(DIA);
   const r = await api('/api/hoy', { token: TOKEN_A });

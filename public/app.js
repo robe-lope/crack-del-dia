@@ -374,9 +374,48 @@ async function refrescarDia() {
 
 // ───────────── Autocompletado ─────────────
 
-async function cargarJugadores() {
-  const { jugadores: lista } = await api('/api/jugadores');
+const CLAVE_JUGADORES = 'crack:jugadores';
+let pedidoJugadores = null; // la lista se pide una sola vez por carga de página
+
+function usarJugadores(lista) {
   jugadores = lista.map((j) => ({ ...j, nn: normalizar(j.n), aa: (j.a ?? []).map(normalizar) }));
+}
+
+// Lo guardado de la visita anterior: se usa ya, y el servidor dice con el ETag si sigue vigente (304).
+function jugadoresGuardados() {
+  try {
+    const guardado = JSON.parse(localStorage.getItem(CLAVE_JUGADORES) ?? 'null');
+    if (guardado?.version && Array.isArray(guardado.jugadores)) return guardado;
+  } catch {
+    /* sin almacenamiento o dato roto: se pide de nuevo */
+  }
+  return null;
+}
+
+function cargarJugadores() {
+  pedidoJugadores ??= (async () => {
+    const guardado = jugadoresGuardados();
+    const r = await fetch('/api/jugadores', { headers: guardado ? { 'If-None-Match': guardado.version } : {} });
+    if (r.status === 304 && guardado) return;
+    if (!r.ok) throw new Error('jugadores');
+    const { jugadores: lista } = await r.json();
+    usarJugadores(lista);
+    try {
+      localStorage.setItem(CLAVE_JUGADORES, JSON.stringify({ version: r.headers.get('ETag'), jugadores: lista }));
+    } catch {
+      /* sin almacenamiento (o lleno): queda en memoria */
+    }
+  })().catch(() => {}); // si falla, se puede jugar igual escribiendo el nombre completo
+  return pedidoJugadores;
+}
+
+// No compite con /api/hoy: se pide cuando el navegador está ocioso o al enfocar el campo, lo que pase primero.
+function programarJugadores() {
+  const guardado = jugadoresGuardados();
+  if (guardado) usarJugadores(guardado.jugadores);
+  const ocioso = window.requestIdleCallback ?? ((fn) => setTimeout(fn, 1500));
+  ocioso(() => cargarJugadores(), { timeout: 4000 });
+  $('#q').addEventListener('focus', () => cargarJugadores(), { once: true });
 }
 
 function buscar(texto) {
@@ -922,7 +961,7 @@ async function iniciar() {
     if (document.visibilityState === 'visible' && vista) refrescarDia();
   });
 
-  cargarJugadores().catch(() => {}); // si falla, se puede jugar igual escribiendo el nombre completo
+  programarJugadores();
 
   try {
     pintar(await api('/api/hoy'));
