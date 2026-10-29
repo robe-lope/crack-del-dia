@@ -59,6 +59,7 @@ test('datosParaCompartir: perdida', () => {
   assert.equal(d.pistas, 0);
 });
 
+// Desde 399055a el texto no lleva la URL.
 test('textoParaCompartir: formato completo, con racha', () => {
   const texto = textoParaCompartir(datosParaCompartir(VISTA_GANADA), 'https://crackdeldia.com');
   assert.equal(
@@ -69,14 +70,13 @@ test('textoParaCompartir: formato completo, con racha', () => {
       'Pistas: 🟨🟨🟨',
       'Intentos: 🟥🟥🟩',
       '700 puntos · racha 5',
-      'https://crackdeldia.com',
     ].join('\n'),
   );
 });
 
 test('textoParaCompartir: sin pistas pedidas y sin racha (racha 0 se omite)', () => {
   const texto = textoParaCompartir(datosParaCompartir(VISTA_PERDIDA), 'https://x');
-  assert.match(texto, /^Crack del Día Nº8\nNo lo saqué\nPistas: sin pistas\nIntentos: 🟥🟥🟥\n0 puntos\nhttps:\/\/x$/);
+  assert.match(texto, /^Crack del Día Nº8\nNo lo saqué\nPistas: sin pistas\nIntentos: 🟥🟥🟥\n0 puntos$/);
   assert.ok(!texto.includes('racha'));
 });
 
@@ -117,4 +117,13 @@ test('datosParaCompartir no trae nada para armar la silueta/bandera: eso llega a
   assert.ok(!('pais' in d));
   assert.ok(!('bandera' in d));
   assert.ok(!('nombre' in d));
+});
+
+test('una partida vieja con más pistas que el tope comparte como mucho maxPistas cuadraditos', () => {
+  const vieja = { ...VISTA_GANADA, pedidas: 14, maxPistas: 9, puntaje: 100 };
+  const d = datosParaCompartir(vieja);
+  assert.equal(d.pistas, 9, 'la tarjeta de stories dibuja d.pistas cuadraditos');
+  assert.match(textoParaCompartir(d), /\nPistas: 🟨{9}\n/u);
+  // Sin maxPistas (vista anterior al tope) no se recorta.
+  assert.equal(datosParaCompartir({ ...VISTA_GANADA, pedidas: 4 }).pistas, 4);
 });
