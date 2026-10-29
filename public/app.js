@@ -75,8 +75,9 @@ function guardarEleccion() {
   }
 }
 
-async function api(ruta, cuerpo) {
+async function api(ruta, cuerpo, signal) {
   const respuesta = await fetch(ruta, {
+    signal,
     method: cuerpo ? 'POST' : 'GET',
     headers: { 'X-Token': token, ...(cuerpo ? { 'Content-Type': 'application/json' } : {}) },
     body: cuerpo ? JSON.stringify(cuerpo) : undefined,
@@ -134,6 +135,7 @@ function pistasPorCategoria(v) {
 
 function pintarFilas(v, previas) {
   const lista = $('#pistas');
+  lista.removeAttribute('aria-busy');
   lista.replaceChildren();
 
   // Las básicas están desde el arranque: no se dan vuelta.
@@ -235,10 +237,11 @@ function pintar(v) {
   $('#acciones').hidden = terminada;
   $('#pedir').hidden = terminada;
   $('#pedir').disabled = !quedanPistas(v);
+  $('#pedir').textContent = enElTope(v) ? 'Sin más pistas' : 'Pedir pista';
   const valor = $('#valor');
   if (!terminada) {
     valor.replaceChildren('Si acertás ahora: ', crear('strong', null, `${v.puntajeActual} puntos`));
-    if (!quedanPistas(v)) valor.append(' · No quedan pistas por pedir.');
+    if (!quedanPistas(v) && !enElTope(v)) valor.append(' · No quedan pistas por pedir.');
   }
   if (terminada) cerrarModal();
   else if ($('#modal').open) pintarModal(v);
@@ -356,12 +359,52 @@ function actualizarCuenta() {
   const s = Math.floor(ms / 1000);
   const dos = (n) => String(n).padStart(2, '0');
   $('#cuenta').textContent = `${dos(Math.floor(s / 3600))}:${dos(Math.floor((s % 3600) / 60))}:${dos(s % 60)}`;
-  if (ms < 1500) setTimeout(refrescarDia, 2500);
+  if (ms < 1500 && !refrescoProgramado) {
+    refrescoProgramado = true; // este tic y el siguiente caen los dos debajo de 1,5 s: se programa una sola vez
+    setTimeout(() => {
+      refrescoProgramado = false;
+      refrescarDia();
+    }, 2500);
+  }
 }
 
+// ───────────── Pedidos a /api/hoy ─────────────
+
+let refrescoProgramado = false;
+let hoyEnVuelo = null; // si ya hay un pedido andando, se reusa su promesa
+let controlHoy = null;
+let ultimoHoy = 0; // cuándo llegó la última respuesta buena
+let trabajando = false; // mandando un intento o pidiendo una pista
+
+const diaArgentino = () => new Date(Date.now() - 3 * 3_600_000).toISOString().slice(0, 10);
+
+// `nuevo`: cancela el que esté en vuelo (es de antes del cambio de día) y lanza otro.
+function pedirHoy({ nuevo = false } = {}) {
+  if (hoyEnVuelo && !nuevo) return hoyEnVuelo;
+  controlHoy?.abort();
+  const control = (controlHoy = new AbortController());
+  const pedido = api('/api/hoy', null, control.signal)
+    .then((v) => {
+      ultimoHoy = Date.now();
+      return v;
+    })
+    .finally(() => {
+      if (hoyEnVuelo === pedido) hoyEnVuelo = controlHoy = null;
+    });
+  hoyEnVuelo = pedido;
+  return pedido;
+}
+
+// No se refresca con algo abierto (modal, confirmación, desplegable) ni a mitad de un intento o una pista.
+const hayAlgoEnCurso = () => trabajando || $('#modal').open || $('#confirmar').open || sugeridos.length > 0;
+
+// Al volver a la pestaña (y a las 00:00): solo si cambió el día argentino o pasó más de un minuto.
 async function refrescarDia() {
+  const otroDia = Boolean(vistaDiaria) && vistaDiaria.fecha !== diaArgentino();
+  if (!otroDia && Date.now() - ultimoHoy < 60_000) return;
+  if (hayAlgoEnCurso()) return;
   try {
-    const v = await api('/api/hoy');
+    const v = await pedirHoy({ nuevo: otroDia });
     if (!vistaDiaria || v.numero !== vistaDiaria.numero) {
       vistaDiaria = null;
       if (pantalla === 'juego' && vista?.modo !== 'practica') {
@@ -381,9 +424,48 @@ async function refrescarDia() {
 
 // ───────────── Autocompletado ─────────────
 
-async function cargarJugadores() {
-  const { jugadores: lista } = await api('/api/jugadores');
+const CLAVE_JUGADORES = 'crack:jugadores';
+let pedidoJugadores = null; // la lista se pide una sola vez por carga de página
+
+function usarJugadores(lista) {
   jugadores = lista.map((j) => ({ ...j, nn: normalizar(j.n), aa: (j.a ?? []).map(normalizar) }));
+}
+
+// Lo guardado de la visita anterior: se usa ya, y el servidor dice con el ETag si sigue vigente (304).
+function jugadoresGuardados() {
+  try {
+    const guardado = JSON.parse(localStorage.getItem(CLAVE_JUGADORES) ?? 'null');
+    if (guardado?.version && Array.isArray(guardado.jugadores)) return guardado;
+  } catch {
+    /* sin almacenamiento o dato roto: se pide de nuevo */
+  }
+  return null;
+}
+
+function cargarJugadores() {
+  pedidoJugadores ??= (async () => {
+    const guardado = jugadoresGuardados();
+    const r = await fetch('/api/jugadores', { headers: guardado ? { 'If-None-Match': guardado.version } : {} });
+    if (r.status === 304 && guardado) return;
+    if (!r.ok) throw new Error('jugadores');
+    const { jugadores: lista } = await r.json();
+    usarJugadores(lista);
+    try {
+      localStorage.setItem(CLAVE_JUGADORES, JSON.stringify({ version: r.headers.get('ETag'), jugadores: lista }));
+    } catch {
+      /* sin almacenamiento (o lleno): queda en memoria */
+    }
+  })().catch(() => {}); // si falla, se puede jugar igual escribiendo el nombre completo
+  return pedidoJugadores;
+}
+
+// No compite con /api/hoy: se pide cuando el navegador está ocioso o al enfocar el campo, lo que pase primero.
+function programarJugadores() {
+  const guardado = jugadoresGuardados();
+  if (guardado) usarJugadores(guardado.jugadores);
+  const ocioso = window.requestIdleCallback ?? ((fn) => setTimeout(fn, 1500));
+  ocioso(() => cargarJugadores(), { timeout: 4000 });
+  $('#q').addEventListener('focus', () => cargarJugadores(), { once: true });
 }
 
 function buscar(texto) {
@@ -483,9 +565,15 @@ function configurarCampo() {
 
 // ───────────── Jugar ─────────────
 
-const quedanPistas = (v) => Boolean(v && v.estado === 'jugando' && v.disponibles.some((d) => d.quedan > 0));
+// El tope de pistas lo controla el servidor; acá solo se refleja (las partidas viejas pueden pasarse).
+const enElTope = (v) => Boolean(v && v.maxPistas != null && v.pedidas >= v.maxPistas);
+const quedanPistas = (v) =>
+  Boolean(v && v.estado === 'jugando' && !enElTope(v) && v.disponibles.some((d) => d.quedan > 0));
+// La pista que deja la partida diaria en el piso: antes de abrirla se pide confirmación.
+const esLaUltima = (v) => v.modo !== 'practica' && v.maxPistas != null && v.pedidas === v.maxPistas - 1;
 
 function ocupado(si) {
+  trabajando = si;
   $('#arriesgar').disabled = si;
   $('#pedir').disabled = si || !quedanPistas(vista);
 }
@@ -531,11 +619,11 @@ let abrioElModal = null; // a quién le devolvemos el foco al cerrar
 const etiquetaCategoria = (d) => (d.id === 'palmares' ? `${d.nombre} (títulos y premios)` : d.nombre);
 
 function pintarModal(v) {
+  const tope = enElTope(v);
   $('#modal-ayuda').replaceChildren(
-    'Cada pista baja ',
-    crear('strong', null, `${v.costoPista} puntos`),
-    '. Si acertás después: ',
-    crear('strong', null, `${v.puntajeSiguiente} puntos`),
+    ...(tope
+      ? [`Llegaste al mínimo de ${v.puntajeMinimo} puntos. Si acertás ahora: `, crear('strong', null, `${v.puntajeActual} puntos`)]
+      : ['Cada pista baja ', crear('strong', null, `${v.costoPista} puntos`), '. Si acertás después: ', crear('strong', null, `${v.puntajeSiguiente} puntos`)]),
     '.',
   );
 
@@ -544,7 +632,7 @@ function pintarModal(v) {
       const li = crear('li');
       const boton = crear('button', 'categoria');
       boton.type = 'button';
-      boton.disabled = d.quedan === 0;
+      boton.disabled = d.quedan === 0 || tope;
       boton.append(
         crear('span', 'categoria-nombre', etiquetaCategoria(d)),
         crear('span', 'categoria-costo', d.quedan === 0 ? 'Agotada' : `−${v.costoPista} puntos`),
@@ -554,7 +642,7 @@ function pintarModal(v) {
           d.quedan === 0 ? 'Ya pediste todas las de esta categoría' : d.quedan === 1 ? 'Queda 1 pista' : `Quedan ${d.quedan} pistas`,
         ),
       );
-      boton.addEventListener('click', () => pedirPista(d.id));
+      boton.addEventListener('click', () => (esLaUltima(v) ? confirmarUltima(d.id) : pedirPista(d.id)));
       li.append(boton);
       return li;
     }),
@@ -571,8 +659,19 @@ function abrirModal() {
 }
 
 function cerrarModal() {
-  const modal = $('#modal');
-  if (modal.open) modal.close();
+  for (const modal of [$('#modal'), $('#confirmar')]) if (modal.open) modal.close();
+}
+
+// Aviso antes de la pista que deja la partida en el piso: solo se abre si se confirma.
+let categoriaAConfirmar = null;
+
+function confirmarUltima(categoria) {
+  cerrarModal();
+  categoriaAConfirmar = categoria;
+  $('#confirmar-texto').textContent =
+    `Con esta pista quedás en ${vista.puntajeMinimo} puntos y no vas a poder pedir más.`;
+  $('#confirmar').showModal();
+  $('#confirmar-cancelar').focus();
 }
 
 function configurarModal() {
@@ -582,11 +681,23 @@ function configurarModal() {
   modal.addEventListener('click', (e) => {
     if (e.target === modal) cerrarModal();
   });
+  const confirmar = $('#confirmar');
+  $('#confirmar-cancelar').addEventListener('click', () => confirmar.close());
+  $('#confirmar-pedir').addEventListener('click', () => {
+    const categoria = categoriaAConfirmar;
+    confirmar.close();
+    if (categoria) pedirPista(categoria);
+  });
+  confirmar.addEventListener('close', () => {
+    categoriaAConfirmar = null;
+    if (vista?.estado === 'jugando') ($('#pedir').disabled ? $('#q') : $('#pedir')).focus();
+  });
   // Esc y el botón ya cierran solos: acá solo se devuelve el foco.
   modal.addEventListener('close', () => {
     const volver = abrioElModal?.isConnected && !abrioElModal.disabled ? abrioElModal : $('#q');
     abrioElModal = null;
-    if (vista?.estado === 'jugando') volver.focus();
+    // Si se cerró para pasar a la confirmación de la última pista, el foco queda en ella.
+    if (vista?.estado === 'jugando' && !$('#confirmar').open) volver.focus();
   });
 }
 
@@ -965,10 +1076,10 @@ async function iniciar() {
     if (document.visibilityState === 'visible' && vista) refrescarDia();
   });
 
-  cargarJugadores().catch(() => {}); // si falla, se puede jugar igual escribiendo el nombre completo
+  programarJugadores();
 
   try {
-    pintar(await api('/api/hoy'));
+    pintar(await pedirHoy());
   } catch (error) {
     mensaje(error.message, true);
     const reintentar = crear('button', 'boton boton--borde', 'Reintentar');

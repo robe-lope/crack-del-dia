@@ -60,7 +60,14 @@
             </div>
             <button type="button" id="pedir" class="boton boton--borde boton--pedir">Pedir pista</button>
           </div>
-          <ol id="pistas" class="filas"></ol>
+          <!-- Esqueleto mientras llega /api/hoy (reserva el alto de las cinco básicas): pintar() lo reemplaza. -->
+          <ol id="pistas" class="filas" aria-busy="true">
+            <li class="fila fila--esqueleto" aria-hidden="true"><span class="esqueleto esqueleto--etiqueta"></span><span class="esqueleto"></span></li>
+            <li class="fila fila--esqueleto" aria-hidden="true"><span class="esqueleto esqueleto--etiqueta"></span><span class="esqueleto"></span></li>
+            <li class="fila fila--esqueleto" aria-hidden="true"><span class="esqueleto esqueleto--etiqueta"></span><span class="esqueleto"></span></li>
+            <li class="fila fila--esqueleto" aria-hidden="true"><span class="esqueleto esqueleto--etiqueta"></span><span class="esqueleto"></span></li>
+            <li class="fila fila--esqueleto" aria-hidden="true"><span class="esqueleto esqueleto--etiqueta"></span><span class="esqueleto"></span></li>
+          </ol>
           <p id="quedan" class="tablero-quedan" hidden></p>
         </section>
 
@@ -144,6 +151,17 @@
     </div>
     <p id="modal-ayuda" class="modal-ayuda"></p>
     <ul id="modal-categorias" class="modal-categorias"></ul>
+  </dialog>
+
+  <dialog id="confirmar" class="modal" aria-labelledby="confirmar-titulo" aria-describedby="confirmar-texto">
+    <div class="modal-cab">
+      <h2 id="confirmar-titulo" class="modal-titulo">Última pista</h2>
+    </div>
+    <p id="confirmar-texto" class="modal-ayuda"></p>
+    <div class="modal-botones">
+      <button type="button" id="confirmar-cancelar" class="boton boton--borde">Cancelar</button>
+      <button type="button" id="confirmar-pedir" class="boton boton--sol">Pedir pista</button>
+    </div>
   </dialog>
 
   <noscript><p class="aviso">Este juego necesita JavaScript para funcionar.</p></noscript>
