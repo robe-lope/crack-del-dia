@@ -195,3 +195,25 @@ test('la dificultad se mide dentro del grupo: fácil es más famoso que difícil
     assert.equal(facil.length + pozoDe(grupo, 'medio').length + dificil.length, pozoDe(grupo, 'todas').length);
   }
 });
+
+test('en práctica el servidor también corta en el tope de pistas', async () => {
+  const { MAX_PISTAS } = await import('../lib/juego.js');
+  const token = 'abababab-abab-4bab-8bab-abababababab';
+  // Una práctica con pistas de sobra (se sortea hasta que salga una).
+  let v;
+  for (let i = 0; i < 30; i++) {
+    v = (await api('/api/practica/nueva', { token, cuerpo: { grupo: 'todos', dificultad: 'todas' } })).datos;
+    if (v.disponibles.reduce((n, d) => n + d.quedan, 0) > MAX_PISTAS) break;
+  }
+  assert.ok(v.disponibles.reduce((n, d) => n + d.quedan, 0) > MAX_PISTAS, 'salió una con pistas de sobra');
+  const orden = v.disponibles.flatMap((d) => Array(d.quedan).fill(d.id));
+  let r;
+  for (const categoria of orden.slice(0, MAX_PISTAS)) {
+    r = await api('/api/practica/pista', { token, cuerpo: { partida: v.partida, categoria } });
+    assert.equal(r.status, 200);
+  }
+  assert.equal(r.datos.pedidas, MAX_PISTAS);
+  r = await api('/api/practica/pista', { token, cuerpo: { partida: v.partida, categoria: orden[MAX_PISTAS] } });
+  assert.equal(r.status, 409);
+  assert.equal(r.datos.error, 'sin_pistas');
+});

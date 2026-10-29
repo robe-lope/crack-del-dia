@@ -16,11 +16,19 @@ const entorno = {
   SEMILLA: 'semilla-de-prueba',
   FECHA_INICIO: '2026-10-22',
 };
-Object.assign(process.env, { SEMILLA: entorno.SEMILLA, FECHA_INICIO: entorno.FECHA_INICIO });
+// La base de este proceso (para importar lib/partida.js) es otra: no se cruza con la del servidor.
+Object.assign(process.env, {
+  SEMILLA: entorno.SEMILLA,
+  FECHA_INICIO: entorno.FECHA_INICIO,
+  TURSO_DATABASE_URL: `file:${join(dir, 'unidad.db')}`,
+});
 
 // Mismos datos y misma semilla que el servidor: así sabemos quién es el jugador de cada día.
 const { jugadorDelDia, datos } = await import('../lib/datos.js');
-const { CATEGORIAS, basicasDe, categoriasDe, diaAnterior, fechaDeHoy, puntaje } = await import('../lib/juego.js');
+const { CATEGORIAS, MAX_PISTAS, PUNTAJE_MINIMO, basicasDe, categoriasDe, diaAnterior, fechaDeHoy, puntaje } = await import(
+  '../lib/juego.js'
+);
+const { vistaBase } = await import('../lib/partida.js');
 
 const TOKEN_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const TOKEN_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -362,4 +370,63 @@ test('/api/hoy siempre manda quién era ayer (null el primer día)', async () =>
   // El primer día de todos (FECHA_INICIO) no tiene ayer.
   const primero = await api('/api/hoy', { token: TOKEN_D, fecha: entorno.FECHA_INICIO });
   assert.equal(primero.datos.ayer, null);
+});
+
+// Una fecha cuyo jugador tenga pistas de sobra para llegar al tope.
+function fechaConMuchasPistas() {
+  for (let i = 0; i < 120; i++) {
+    const fecha = new Date(Date.parse('2026-12-01') + i * 86_400_000).toISOString().slice(0, 10);
+    const total = [...categoriasDe(jugadorDelDia(fecha)).values()].reduce((n, items) => n + items.length, 0);
+    if (total > MAX_PISTAS) return fecha;
+  }
+  throw new Error('ningún jugador de prueba tiene pistas de sobra');
+}
+
+// Pide pistas en el orden del catálogo hasta `cuantas`, sin pasarse de lo que tiene cada categoría.
+function ordenDePistas(jugador, cuantas) {
+  return [...categoriasDe(jugador)].flatMap(([id, items]) => items.map(() => id)).slice(0, cuantas);
+}
+
+test('el tope de pistas sale de la fórmula y deja el puntaje en el piso', () => {
+  assert.equal(MAX_PISTAS, 9);
+  assert.equal(puntaje(MAX_PISTAS), PUNTAJE_MINIMO);
+  assert.ok(puntaje(MAX_PISTAS - 1) > PUNTAJE_MINIMO, 'una pista antes todavía vale más que el piso');
+});
+
+test('el servidor rechaza la pista que pasa el tope, aunque queden categorías', async () => {
+  const token = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+  const fecha = fechaConMuchasPistas();
+  const orden = ordenDePistas(jugadorDelDia(fecha), MAX_PISTAS + 1);
+  let r;
+  for (const categoria of orden.slice(0, MAX_PISTAS)) {
+    r = await api('/api/pista', { token, fecha, cuerpo: { categoria } });
+    assert.equal(r.status, 200);
+  }
+  assert.equal(r.datos.pedidas, MAX_PISTAS);
+  assert.equal(r.datos.puntajeActual, PUNTAJE_MINIMO);
+  assert.equal(r.datos.maxPistas, MAX_PISTAS);
+  assert.ok(r.datos.disponibles.some((d) => d.quedan > 0), 'todavía hay categorías con pistas');
+
+  r = await api('/api/pista', { token, fecha, cuerpo: { categoria: orden[MAX_PISTAS] } });
+  assert.equal(r.status, 409);
+  assert.equal(r.datos.error, 'sin_pistas');
+  assert.match(r.datos.mensaje, /mínimo de 100 puntos/);
+  assert.equal((await api('/api/hoy', { token, fecha })).datos.pedidas, MAX_PISTAS, 'no cambió nada');
+
+  // Acertar en el tope vale el piso.
+  r = await api('/api/adivinar', { token, fecha, cuerpo: { id: jugadorDelDia(fecha).id } });
+  assert.equal(r.datos.estado, 'ganado');
+  assert.equal(r.datos.puntaje, PUNTAJE_MINIMO);
+});
+
+test('una partida vieja con más pistas que el tope se sigue mostrando sin romperse', () => {
+  const jugador = jugadorDelDia(fechaConMuchasPistas());
+  const pedidas = ordenDePistas(jugador, MAX_PISTAS + 1);
+  const vieja = { estado: 'jugando', pedidas: [...pedidas, ...pedidas], fallos: [] };
+  const v = vistaBase(jugador, vieja);
+  assert.equal(v.pedidas, vieja.pedidas.length);
+  assert.ok(v.pedidas > v.maxPistas);
+  assert.ok(v.reveladas.length >= MAX_PISTAS + 1, 'se ven todas las que ya había pedido');
+  assert.equal(v.puntajeActual, PUNTAJE_MINIMO);
+  assert.equal(v.puntajeSiguiente, PUNTAJE_MINIMO);
 });

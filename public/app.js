@@ -228,10 +228,11 @@ function pintar(v) {
   $('#form').hidden = terminada;
   $('#acciones').hidden = terminada;
   $('#pedir').disabled = !quedanPistas(v);
+  $('#pedir').textContent = enElTope(v) ? 'Sin más pistas' : 'Pedir pista';
   const valor = $('#valor');
   if (!terminada) {
     valor.replaceChildren('Si acertás ahora: ', crear('strong', null, `${v.puntajeActual} puntos`));
-    if (!quedanPistas(v)) valor.append(' · No quedan pistas por pedir.');
+    if (!quedanPistas(v) && !enElTope(v)) valor.append(' · No quedan pistas por pedir.');
   }
   if (terminada) cerrarModal();
   else if ($('#modal').open) pintarModal(v);
@@ -475,7 +476,12 @@ function configurarCampo() {
 
 // ───────────── Jugar ─────────────
 
-const quedanPistas = (v) => Boolean(v && v.estado === 'jugando' && v.disponibles.some((d) => d.quedan > 0));
+// El tope de pistas lo controla el servidor; acá solo se refleja (las partidas viejas pueden pasarse).
+const enElTope = (v) => Boolean(v && v.maxPistas != null && v.pedidas >= v.maxPistas);
+const quedanPistas = (v) =>
+  Boolean(v && v.estado === 'jugando' && !enElTope(v) && v.disponibles.some((d) => d.quedan > 0));
+// La pista que deja la partida diaria en el piso: antes de abrirla se pide confirmación.
+const esLaUltima = (v) => v.modo !== 'practica' && v.maxPistas != null && v.pedidas === v.maxPistas - 1;
 
 function ocupado(si) {
   $('#arriesgar').disabled = si;
@@ -523,11 +529,11 @@ let abrioElModal = null; // a quién le devolvemos el foco al cerrar
 const etiquetaCategoria = (d) => (d.id === 'palmares' ? `${d.nombre} (títulos y premios)` : d.nombre);
 
 function pintarModal(v) {
+  const tope = enElTope(v);
   $('#modal-ayuda').replaceChildren(
-    'Cada pista baja ',
-    crear('strong', null, `${v.costoPista} puntos`),
-    '. Si acertás después: ',
-    crear('strong', null, `${v.puntajeSiguiente} puntos`),
+    ...(tope
+      ? [`Llegaste al mínimo de ${v.puntajeMinimo} puntos. Si acertás ahora: `, crear('strong', null, `${v.puntajeActual} puntos`)]
+      : ['Cada pista baja ', crear('strong', null, `${v.costoPista} puntos`), '. Si acertás después: ', crear('strong', null, `${v.puntajeSiguiente} puntos`)]),
     '.',
   );
 
@@ -536,7 +542,7 @@ function pintarModal(v) {
       const li = crear('li');
       const boton = crear('button', 'categoria');
       boton.type = 'button';
-      boton.disabled = d.quedan === 0;
+      boton.disabled = d.quedan === 0 || tope;
       boton.append(
         crear('span', 'categoria-nombre', etiquetaCategoria(d)),
         crear('span', 'categoria-costo', d.quedan === 0 ? 'Agotada' : `−${v.costoPista} puntos`),
@@ -546,7 +552,7 @@ function pintarModal(v) {
           d.quedan === 0 ? 'Ya pediste todas las de esta categoría' : d.quedan === 1 ? 'Queda 1 pista' : `Quedan ${d.quedan} pistas`,
         ),
       );
-      boton.addEventListener('click', () => pedirPista(d.id));
+      boton.addEventListener('click', () => (esLaUltima(v) ? confirmarUltima(d.id) : pedirPista(d.id)));
       li.append(boton);
       return li;
     }),
@@ -563,8 +569,19 @@ function abrirModal() {
 }
 
 function cerrarModal() {
-  const modal = $('#modal');
-  if (modal.open) modal.close();
+  for (const modal of [$('#modal'), $('#confirmar')]) if (modal.open) modal.close();
+}
+
+// Aviso antes de la pista que deja la partida en el piso: solo se abre si se confirma.
+let categoriaAConfirmar = null;
+
+function confirmarUltima(categoria) {
+  cerrarModal();
+  categoriaAConfirmar = categoria;
+  $('#confirmar-texto').textContent =
+    `Con esta pista quedás en ${vista.puntajeMinimo} puntos y no vas a poder pedir más.`;
+  $('#confirmar').showModal();
+  $('#confirmar-cancelar').focus();
 }
 
 function configurarModal() {
@@ -574,11 +591,23 @@ function configurarModal() {
   modal.addEventListener('click', (e) => {
     if (e.target === modal) cerrarModal();
   });
+  const confirmar = $('#confirmar');
+  $('#confirmar-cancelar').addEventListener('click', () => confirmar.close());
+  $('#confirmar-pedir').addEventListener('click', () => {
+    const categoria = categoriaAConfirmar;
+    confirmar.close();
+    if (categoria) pedirPista(categoria);
+  });
+  confirmar.addEventListener('close', () => {
+    categoriaAConfirmar = null;
+    if (vista?.estado === 'jugando') ($('#pedir').disabled ? $('#q') : $('#pedir')).focus();
+  });
   // Esc y el botón ya cierran solos: acá solo se devuelve el foco.
   modal.addEventListener('close', () => {
     const volver = abrioElModal?.isConnected && !abrioElModal.disabled ? abrioElModal : $('#q');
     abrioElModal = null;
-    if (vista?.estado === 'jugando') volver.focus();
+    // Si se cerró para pasar a la confirmación de la última pista, el foco queda en ella.
+    if (vista?.estado === 'jugando' && !$('#confirmar').open) volver.focus();
   });
 }
 
@@ -611,7 +640,9 @@ function textoParaCompartir(v) {
       ].join(' · ')
     : 'No salió';
   const lineas = [`${NOMBRE} Nº${v.numero}`, resultado];
-  if (v.pedidas > 0) lineas.push(`Pistas ${'🟨'.repeat(v.pedidas)}`);
+  // Con el tope no debería pasar, pero una partida vieja puede tener más pistas: nunca más cuadraditos que el tope.
+  const cuadraditos = Math.min(v.pedidas, v.maxPistas ?? v.pedidas);
+  if (cuadraditos > 0) lineas.push(`Pistas ${'🟨'.repeat(cuadraditos)}`);
   lineas.push(
     `Intentos ${'🟥'.repeat(errores)}${gano ? '🟩' : ''}${'⬜'.repeat(Math.max(0, v.intentosMax - errores - (gano ? 1 : 0)))}`,
   );
