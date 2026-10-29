@@ -128,6 +128,7 @@ function pistasPorCategoria(v) {
 
 function pintarFilas(v, previas) {
   const lista = $('#pistas');
+  lista.removeAttribute('aria-busy');
   lista.replaceChildren();
 
   // Las básicas están desde el arranque: no se dan vuelta.

@@ -448,3 +448,10 @@ test('una partida vieja con más pistas que el tope se sigue mostrando sin rompe
   assert.equal(v.puntajeActual, PUNTAJE_MINIMO);
   assert.equal(v.puntajeSiguiente, PUNTAJE_MINIMO);
 });
+
+test('/api/hoy manda Server-Timing con cada tramo y el total', async () => {
+  const r = await fetch(`${BASE}/api/hoy?fecha=${DIA}`, { headers: { 'X-Token': TOKEN_A } });
+  assert.equal(r.status, 200);
+  const nombres = r.headers.get('server-timing').split(', ').map((t) => t.split(';')[0]);
+  assert.deepEqual(nombres.sort(), ['datos', 'db-apodo', 'db-partida', 'db-racha', 'esquema', 'total', 'vista']);
+});

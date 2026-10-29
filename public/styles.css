@@ -270,6 +270,33 @@ input {
   color: var(--tiza-suave);
 }
 
+/* Marcadores grises mientras carga la partida: mismo alto que una fila real, así no salta nada. */
+.esqueleto {
+  display: block;
+  height: 1.7rem;
+  border-radius: 4px;
+  background: var(--linea);
+  opacity: 0.55;
+  animation: latido 1.4s ease-in-out infinite;
+}
+
+.esqueleto--etiqueta {
+  height: 1.1rem;
+  width: 4.2rem;
+}
+
+@keyframes latido {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .esqueleto {
+    animation: none;
+  }
+}
+
 /* La carrera va con la etiqueta más angosta, así los clubes entran en una sola línea. */
 .fila--club {
   grid-template-columns: 2.4rem 1fr;

@@ -48,7 +48,14 @@
               <p id="contador" class="tablero-sub"></p>
             </div>
           </div>
-          <ol id="pistas" class="filas"></ol>
+          <!-- Esqueleto mientras llega /api/hoy (reserva el alto de las cinco básicas): pintar() lo reemplaza. -->
+          <ol id="pistas" class="filas" aria-busy="true">
+            <li class="fila fila--esqueleto" aria-hidden="true"><span class="esqueleto esqueleto--etiqueta"></span><span class="esqueleto"></span></li>
+            <li class="fila fila--esqueleto" aria-hidden="true"><span class="esqueleto esqueleto--etiqueta"></span><span class="esqueleto"></span></li>
+            <li class="fila fila--esqueleto" aria-hidden="true"><span class="esqueleto esqueleto--etiqueta"></span><span class="esqueleto"></span></li>
+            <li class="fila fila--esqueleto" aria-hidden="true"><span class="esqueleto esqueleto--etiqueta"></span><span class="esqueleto"></span></li>
+            <li class="fila fila--esqueleto" aria-hidden="true"><span class="esqueleto esqueleto--etiqueta"></span><span class="esqueleto"></span></li>
+          </ol>
           <p id="quedan" class="tablero-quedan" hidden></p>
         </section>
 
