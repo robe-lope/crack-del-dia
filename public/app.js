@@ -746,16 +746,20 @@ async function copiar(texto) {
 async function compartirTexto() {
   if (!vistaDiaria) return;
   const texto = textoParaCompartir(datosParaCompartir(vistaDiaria));
+  // En el celular la URL va aparte (las apps la pegan al texto; concatenada salía duplicada). En
+  // escritorio el menú de Windows/macOS suele ignorar `url` y el portapapeles no la tiene: va en el texto.
+  const celular = navigator.userAgentData?.mobile ?? matchMedia('(pointer: coarse)').matches;
+  const textoConUrl = `${texto}\n${location.origin}`;
   if (navigator.share) {
     try {
-      await navigator.share({ text: texto, url: location.origin });
+      await navigator.share(celular ? { text: texto, url: location.origin } : { text: textoConUrl });
       return;
     } catch (error) {
       if (error?.name === 'AbortError') return; // cerró el menú sin elegir nada: no es un error
       // si falla por otro motivo, se sigue probando copiar
     }
   }
-  const ok = await copiar(texto);
+  const ok = await copiar(textoConUrl);
   mensaje(ok ? 'Copiado. Pegalo donde quieras.' : 'No pudimos copiarlo. Seleccioná y copiá el texto a mano.', !ok);
 }
 
